@@ -1,0 +1,65 @@
+# ===== Переменные окружения (НИКОГДА не коммитим ключи) =====
+.env
+.env.local
+.env.*.local
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# ===== IDE =====
+.idea/
+.vscode/
+*.swp
+*.swo
+*.swn
+
+# ===== Логи =====
+*.log
+uvicorn.log
+
+# ===== Временные файлы =====
+*.tmp
+*.temp
+
+# ===== OS =====
+Thumbs.db
+.DS_Store
+
+# ===== Служебные папки Koda / локальные эксперименты =====
+.koda/
+
+# ===== Временные скрипты-разведка (не часть продукта) =====
+fetch_docs.py
+parse_docs.py
+parse_docs2.py
+read_log.py
+wait_and_read.py
+wait_for_pipeline.py
+sleep_read.py
+probe_minimax.py
+fetch_models.py
+check_models.py
+smoke_test.py
+doc_test.py
+test_official.py
+final_pipeline_test.py
+
+# ===== Временные отладочные HTML-логотипы =====
+Logotip.html
+Logotip2.html
+
+# ===== JSON-артефакты тестов в корне =====
+/checklist.json
+/generate.json
+
+

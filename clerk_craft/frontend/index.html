@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClickJurist - Умный юридический помощник</title>
+
+    <!-- Шрифт Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <!-- Стили проекта -->
+    <link rel="stylesheet" href="/static/style.css">
+
+    <!-- Библиотека marked.js для парсинга Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Шапка с логотипом -->
+        <header class="header">
+            <div class="brand-container">
+                <!-- Щит -->
+                <svg class="shield-bg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M65,60 C65,60,50,65,50,85 C50,115,100,145,100,145
+                             C100,145,150,115,150,85 C150,65,135,60,135,60 L65,60 Z"/>
+                </svg>
+
+                <!-- Весы -->
+                <img class="scales-img"
+                     src="https://cdn-icons-png.flaticon.com/512/18569/18569911.png"
+                     alt="Весы справедливости"
+                     aria-label="Весы справедливости">
+
+                <!-- Текст -->
+                <h1 class="brand-name">
+                    CLICK<span class="brand-highlight">JURIST</span>
+                </h1>
+                <p class="tagline">Мгновенная юридическая помощь</p>
+            </div>
+        </header>
+
+        <!-- Основной контент -->
+        <main class="main-content">
+            <!-- Поле ввода -->
+            <div class="input-section">
+                <label class="input-label" for="query-input">Опишите вашу юридическую ситуацию:</label>
+                <textarea
+                    id="query-input"
+                    class="text-input"
+                    placeholder="Например: Мне нужно подать иск о защите прав потребителей против продавца..."
+                    rows="5"
+                ></textarea>
+            </div>
+
+            <!-- Кнопки действий -->
+            <div class="action-buttons">
+                <button id="analyze-btn" class="btn btn-primary">Анализировать</button>
+                <button id="checklist-btn" class="btn btn-action">Чек-лист</button>
+                <button id="print-btn" class="btn btn-secondary">Шаблон документа</button>
+            </div>
+
+            <!-- Лоадер -->
+            <div id="loader-overlay" class="loader-overlay">
+                <div class="spinner"></div>
+                <div class="loader-text">Ваш запрос принят — ожидайте результат…</div>
+            </div>
+
+            <!-- Блок вывода основной консультации -->
+            <div class="output-section">
+                <h3 class="output-title">Результат анализа:</h3>
+                <div id="markdown-output" class="markdown-output">
+                    Здесь появится юридическая консультация после отправки запроса...
+                </div>
+                <!-- Кнопка копирования -->
+                <button id="copy-btn" class="btn btn-secondary copy-btn">
+                    Скопировать
+                </button>
+            </div>
+
+            <!-- Секция чек-листа (скрыта до клика по «Чек-лист») -->
+            <div id="checklist-section" class="extra-section">
+                <h3 class="extra-title">Чек-лист действий:</h3>
+                <div id="checklist-content" class="checklist-content">
+                    <!-- Контент заполняется через /api/checklist -->
+                </div>
+            </div>
+
+            <!-- Секция шаблона документа (скрыта до клика по «Шаблон документа») -->
+            <div id="document-section" class="extra-section">
+                <h3 class="extra-title">Шаблон документа:</h3>
+
+                <!-- Селектор типа документа -->
+                <div id="doc-type-selector" class="doc-type-selector">
+                    <p class="selector-hint">Выберите тип документа:</p>
+                    <div class="doc-type-buttons">
+                        <button class="btn btn-action doc-type-btn" data-doc-type="isk">Исковое заявление</button>
+                        <button class="btn btn-action doc-type-btn" data-doc-type="pretension">Претензия</button>
+                        <button class="btn btn-action doc-type-btn" data-doc-type="zhaloba">Жалоба</button>
+                    </div>
+                </div>
+
+                <div id="document-content" class="document-content">
+                    <!-- Контент заполняется через /api/document -->
+                </div>
+
+                <!-- Панель действий с шаблоном (виден только после генерации) -->
+                <div id="doc-actions" class="doc-actions" style="display: none;">
+                    <button id="download-pdf-btn" class="btn btn-primary doc-action-btn">
+                        📄 Скачать PDF-шаблон
+                    </button>
+                    <button id="copy-doc-btn" class="btn btn-secondary doc-action-btn">
+                        📋 Скопировать
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Футер -->
+        <footer class="footer">
+            <button id="clear-btn" class="btn footer-btn">🗑 Очистить форму</button>
+        </footer>
+    </div>
+
+    <!-- Скрипт приложения -->
+    <script src="/static/script.js"></script>
+</body>
+</html>

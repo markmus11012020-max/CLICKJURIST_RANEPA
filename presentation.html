@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClickJurist — Презентация проекта</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+        --bg-dark: #1a1f3a;
+        --bg-medium: #2a2f4a;
+        --bg-light: #3a3f5a;
+        --accent-cyan: #00d9ff;
+        --accent-cyan-dim: #00b8d4;
+        --accent-purple: #a78bfa;
+        --accent-green: #34d399;
+        --accent-orange: #fb923c;
+        --text-primary: #ffffff;
+        --text-secondary: #b0b8d0;
+        --border-glow: rgba(0, 217, 255, 0.4);
+        --shadow-glow: 0 0 30px rgba(0, 217, 255, 0.3);
+        --gradient-primary: linear-gradient(135deg, #00d9ff 0%, #0099cc 100%);
+        --gradient-bg: linear-gradient(180deg, #1a1f3a 0%, #2a2f4a 100%);
+    }
+
+    body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: var(--gradient-bg);
+        color: var(--text-primary);
+        min-height: 100vh;
+        overflow: hidden;
+    }
+
+    .progress {
+        position: fixed;
+        top: 0; left: 0;
+        height: 3px;
+        background: var(--gradient-primary);
+        z-index: 100;
+        transition: width 0.4s ease;
+        box-shadow: 0 0 10px var(--accent-cyan);
+    }
+
+    .topbar {
+        position: fixed;
+        top: 0; left: 0; right: 0;
+        padding: 14px 30px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 50;
+        background: rgba(26, 31, 58, 0.6);
+        backdrop-filter: blur(8px);
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .topbar .brand {
+        font-weight: 700;
+        font-size: 1.05rem;
+        letter-spacing: 1px;
+    }
+    .topbar .brand span { color: var(--accent-cyan); }
+    .topbar .counter {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .stage {
+        height: 100vh;
+        width: 100vw;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .slide {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 80px 50px 100px;
+        opacity: 0;
+        transform: translateX(40px);
+        transition: opacity 0.45s ease, transform 0.45s ease;
+        pointer-events: none;
+    }
+    .slide.active {
+        opacity: 1;
+        transform: translateX(0);
+        pointer-events: auto;
+    }
+    .slide.exit-left {
+        opacity: 0;
+        transform: translateX(-40px);
+    }
+
+    .slide-inner {
+        max-width: 1080px;
+        width: 100%;
+        margin: 0 auto;
+    }
+
+    .slide-num {
+        display: inline-block;
+        color: var(--accent-cyan);
+        font-size: 0.9rem;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        margin-bottom: 14px;
+        font-weight: 600;
+    }
+    .slide-num::before {
+        content: "— ";
+        color: var(--text-secondary);
+    }
+
+    .title-slide {
+        text-align: center;
+    }
+    .title-slide h1 {
+        font-size: 4.5rem;
+        font-weight: 800;
+        letter-spacing: -1px;
+        margin-bottom: 16px;
+        background: var(--gradient-primary);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        line-height: 1.1;
+    }
+    .title-slide h1 .alt { color: var(--text-primary); -webkit-text-fill-color: var(--text-primary); }
+    .title-slide .sub {
+        font-size: 1.4rem;
+        color: var(--text-secondary);
+        margin-bottom: 36px;
+    }
+    .title-slide .meta {
+        display: flex;
+        gap: 30px;
+        justify-content: center;
+        flex-wrap: wrap;
+        font-size: 0.95rem;
+        color: var(--text-secondary);
+    }
+    .title-slide .meta strong { color: var(--accent-cyan); }
+    .title-slide .big-icon {
+        font-size: 4rem;
+        margin-bottom: 18px;
+        filter: drop-shadow(0 0 20px var(--accent-cyan));
+    }
+
+    h2 {
+        font-size: 2.4rem;
+        font-weight: 700;
+        margin-bottom: 30px;
+        color: var(--text-primary);
+        line-height: 1.2;
+    }
+    h2 .accent { color: var(--accent-cyan); }
+
+    h3 {
+        font-size: 1.3rem;
+        color: var(--accent-cyan);
+        margin-bottom: 14px;
+        font-weight: 600;
+    }
+
+    p, li { font-size: 1.05rem; line-height: 1.7; color: var(--text-primary); }
+    li { margin-bottom: 8px; }
+    ul, ol { padding-left: 22px; }
+
+    .lead {
+        font-size: 1.2rem;
+        color: var(--text-secondary);
+        margin-bottom: 28px;
+        max-width: 850px;
+    }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+
+    .card {
+        background: var(--bg-medium);
+        border: 1px solid rgba(0, 217, 255, 0.15);
+        border-radius: 12px;
+        padding: 22px;
+        transition: transform 0.25s ease, border-color 0.25s ease;
+    }
+    .card:hover {
+        transform: translateY(-4px);
+        border-color: var(--accent-cyan);
+    }
+    .card .ic {
+        font-size: 2rem;
+        margin-bottom: 10px;
+        display: block;
+    }
+    .card h4 {
+        font-size: 1.05rem;
+        color: var(--accent-cyan);
+        margin-bottom: 6px;
+        font-weight: 600;
+    }
+    .card p { font-size: 0.95rem; color: var(--text-secondary); }
+
+    .pipeline {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        flex-wrap: wrap;
+        margin: 24px 0 32px;
+    }
+    .pipe-step {
+        background: var(--bg-medium);
+        border: 2px solid var(--accent-cyan);
+        border-radius: 14px;
+        padding: 18px 22px;
+        min-width: 200px;
+        text-align: center;
+        position: relative;
+    }
+    .pipe-step .num {
+        position: absolute;
+        top: -12px; left: 50%;
+        transform: translateX(-50%);
+        background: var(--bg-dark);
+        color: var(--accent-cyan);
+        border: 2px solid var(--accent-cyan);
+        border-radius: 50%;
+        width: 28px; height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.85rem;
+        font-weight: 700;
+    }
+    .pipe-step h4 { color: var(--accent-cyan); margin-bottom: 4px; font-size: 1rem; }
+    .pipe-step .model { font-size: 0.85rem; color: var(--accent-purple); font-family: 'Courier New', monospace; margin: 4px 0; }
+    .pipe-step .role { font-size: 0.85rem; color: var(--text-secondary); }
+    .pipe-arrow {
+        color: var(--accent-cyan);
+        font-size: 1.6rem;
+        font-weight: 700;
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 12px 0;
+        background: var(--bg-medium);
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    .table th, .table td {
+        padding: 12px 16px;
+        text-align: left;
+        border-bottom: 1px solid rgba(255,255,255,0.07);
+        font-size: 0.95rem;
+    }
+    .table th {
+        background: var(--bg-light);
+        color: var(--accent-cyan);
+        font-weight: 600;
+    }
+    .table tr:last-child td { border-bottom: none; }
+    .table code {
+        font-family: 'Courier New', monospace;
+        color: var(--accent-cyan);
+        background: var(--bg-dark);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.88rem;
+    }
+
+    pre {
+        background: var(--bg-dark);
+        border: 1px solid rgba(0,217,255,0.2);
+        border-left: 3px solid var(--accent-cyan);
+        border-radius: 8px;
+        padding: 16px 18px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.92rem;
+        overflow-x: auto;
+        color: #e0e6f5;
+        line-height: 1.55;
+        white-space: pre-wrap;
+    }
+    pre .com { color: #6b7280; font-style: italic; }
+    pre .key { color: var(--accent-cyan); }
+    pre .str { color: var(--accent-green); }
+    pre .num { color: var(--accent-orange); }
+
+    .hl {
+        background: linear-gradient(135deg, rgba(0,217,255,0.12), rgba(167,139,250,0.08));
+        border: 1px solid var(--border-glow);
+        border-radius: 12px;
+        padding: 18px 22px;
+        margin: 16px 0;
+    }
+    .hl.warn { border-color: rgba(251,146,60,0.4); background: linear-gradient(135deg, rgba(251,146,60,0.1), rgba(167,139,250,0.05)); }
+    .hl.ok   { border-color: rgba(52,211,153,0.4); background: linear-gradient(135deg, rgba(52,211,153,0.1), rgba(0,217,255,0.05)); }
+
+    .stats {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 18px;
+        margin: 20px 0;
+    }
+    .stat {
+        background: var(--bg-medium);
+        border-radius: 12px;
+        padding: 22px;
+        text-align: center;
+        border: 1px solid rgba(0,217,255,0.2);
+    }
+    .stat .v {
+        font-size: 2.4rem;
+        font-weight: 800;
+        color: var(--accent-cyan);
+        line-height: 1;
+    }
+    .stat .l {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        margin-top: 6px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .timeline {
+        position: relative;
+        padding-left: 30px;
+        margin: 18px 0;
+    }
+    .timeline::before {
+        content: "";
+        position: absolute;
+        left: 8px; top: 8px; bottom: 8px;
+        width: 2px;
+        background: linear-gradient(180deg, var(--accent-cyan), var(--accent-purple));
+    }
+    .tl-item {
+        position: relative;
+        margin-bottom: 18px;
+        padding-left: 10px;
+    }
+    .tl-item::before {
+        content: "";
+        position: absolute;
+        left: -28px; top: 6px;
+        width: 14px; height: 14px;
+        background: var(--bg-dark);
+        border: 3px solid var(--accent-cyan);
+        border-radius: 50%;
+        box-shadow: 0 0 12px var(--accent-cyan);
+    }
+    .tl-item .step { color: var(--accent-cyan); font-size: 0.85rem; letter-spacing: 2px; text-transform: uppercase; }
+    .tl-item h4 { color: var(--text-primary); margin: 4px 0 4px; font-size: 1.05rem; }
+    .tl-item p { color: var(--text-secondary); font-size: 0.95rem; }
+
+    .nav {
+        position: fixed;
+        bottom: 22px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 12px;
+        z-index: 50;
+        background: rgba(26, 31, 58, 0.7);
+        backdrop-filter: blur(10px);
+        padding: 8px 12px;
+        border-radius: 30px;
+        border: 1px solid rgba(0,217,255,0.2);
+    }
+    .nav button {
+        background: var(--bg-light);
+        border: 1px solid var(--border-glow);
+        color: var(--text-primary);
+        width: 42px; height: 42px;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 1.1rem;
+        transition: all 0.2s ease;
+    }
+    .nav button:hover:not(:disabled) {
+        background: var(--accent-cyan);
+        color: var(--bg-dark);
+        transform: scale(1.05);
+    }
+    .nav button:disabled { opacity: 0.3; cursor: not-allowed; }
+    .nav .dots {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        padding: 0 10px;
+    }
+    .nav .dot {
+        width: 8px; height: 8px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 50%;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .nav .dot.active {
+        background: var(--accent-cyan);
+        box-shadow: 0 0 8px var(--accent-cyan);
+        width: 22px;
+        border-radius: 4px;
+    }
+
+    .help {
+        position: fixed;
+        bottom: 22px;
+        right: 30px;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        z-index: 50;
+        text-align: right;
+        line-height: 1.5;
+    }
+    .help kbd {
+        background: var(--bg-light);
+        padding: 2px 7px;
+        border-radius: 4px;
+        border: 1px solid var(--border-glow);
+        font-family: inherit;
+        font-size: 0.78rem;
+        color: var(--accent-cyan);
+    }
+
+    @media print {
+        body { background: #fff !important; color: #000 !important; overflow: visible !important; }
+        .topbar, .nav, .help, .progress { display: none !important; }
+        .stage { height: auto !important; overflow: visible !important; }
+        .slide {
+            position: relative !important;
+            opacity: 1 !important;
+            transform: none !important;
+            page-break-after: always;
+            padding: 40px 30px !important;
+            min-height: 90vh;
+        }
+        .slide * { color: #000 !important; -webkit-text-fill-color: #000 !important; }
+        .title-slide h1 { background: none !important; -webkit-text-fill-color: #000 !important; color: #000 !important; }
+        .card, .pipe-step, .stat, .table, pre, .hl, .timeline .tl-item::before {
+            background: #fff !important;
+            border-color: #333 !important;
+            box-shadow: none !important;
+        }
+        .table th, .pipe-step .num, .pipe-step h4, h2 .accent, h3, .card h4 {
+            color: #000 !important;
+        }
+    }
+
+    @media (max-width: 900px) {
+        .grid-2, .grid-3, .grid-4, .stats { grid-template-columns: 1fr; }
+        .pipeline { flex-direction: column; }
+        .pipe-arrow { transform: rotate(90deg); }
+        h2 { font-size: 1.7rem; }
+        .title-slide h1 { font-size: 2.6rem; }
+        .slide { padding: 80px 22px 100px; }
+    }
+</style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+
+<div class="topbar">
+    <div class="brand">CLICK<span>JURIST</span> · Презентация проекта</div>
+    <div class="counter"><span id="cur">1</span> / <span id="total">14</span></div>
+</div>
+
+<div class="stage" id="stage">
+
+    <!-- ============= SLIDE 1: TITLE ============= -->
+    <section class="slide title-slide active" data-title="Титульный">
+        <div class="slide-inner">
+            <div class="big-icon">⚖️</div>
+            <h1>Click<span class="alt">Jurist</span></h1>
+            <p class="sub">Умный юридический помощник на базе двухэтапного LLM-пайплайна</p>
+            <div class="meta">
+                <span><strong>Студент:</strong> Гульназ Мусина</span>
+                <span><strong>Курс:</strong> Специалист по ИИ-инструментам: запросы и автоматизация без кода</span>
+                <span><strong>Преподаватель:</strong> Шамота Александр Михайлович, РАНХиГС</span>
+                <span><strong>2026</strong></span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============= SLIDE 2: PROBLEM ============= -->
+    <section class="slide" data-title="Проблема">
+        <div class="slide-inner">
+            <span class="slide-num">Слайд 02</span>
+            <h2>📌 Какую <span class="accent">проблему</span> решаем</h2>
+            <p class="lead">Юридическая консультация «по-человечески» и в шаблонах документов — это две разные задачи. Один ИИ-сервис редко справляется с обеими сразу и качественно.</p>
+            <div class="grid-3" style="margin-top:24px;">
+                <div class="card">
+                    <span class="ic">⏱</span>
+                    <h4>Долго</h4>
+                    <p>Люди ищут ответ часами: юристы, форумы, законы. Срочные ситуации не ждут.</p>
+                </div>
+                <div class="card">
+                    <span class="ic">💸</span>
+                    <h4>Дорого</h4>
+                    <p>Первичная консультация юриста — от 2000 ₽. Не каждый готов платить за «а вдруг пригодится».</p>
+                </div>
+                <div class="card">
+                    <span class="ic">📄</span>
+                    <h4>Сложно</h4>
+                    <p>Составить иск, претензию или жалобу без опыта — пугает шапкой, реквизитами и ссылками на статьи.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============= SLIDE 3: GOAL ============= -->
+    <section class="slide" data-title="Цель и задачи">
+        <div class="slide-inner">
+            <span class="slide-num">Слайд 03</span>
+            <h2>🎯 Цель и <span class="accent">задачи</span> проекта</h2>
+            <p class="lead">Сделать «карманного юриста», который бесплатно выдаёт юридически грамотную консультацию и при необходимости сразу формирует рабочий шаблон документа.</p>
+            <div class="grid-2">
+                <div class="card">
+                    <h4>Главная цель</h4>
+                    <p>Продемонстрировать применение LLM в production-задаче: двухэтапный конвейер, маршрутизация между моделями, контроль качества и токенной экономии.</p>
+                </div>
+                <div class="card">
+                    <h4>Задачи</h4>
+                    <ol>
+                        <li>Спроектировать LLM-пайплайн с проверкой качества</li>
+                        <li>Реализовать чек-лист и шаблоны документов</li>
+                        <li>Сделать UX «без обучения» — справится любой</li>
+                        <li>Обеспечить безопасность данных (анонимизация)</li>
+                        <li>Развернуть локально, протестировать end-to-end</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============= SLIDE 4: ARCHITECTURE OVERVIEW ============= -->
+    <section class="slide" data-title="Архитектура">
+        <div class="slide-inner">
+            <span class="slide-num">Слайд 04</span>
+            <h2>🏗 Архитектура <span class="accent">системы</span></h2>
+            <p class="lead">Клиент-серверное приложение: FastAPI на бэкенде, vanilla-JS на фронтенде, два независимых вызова LLM через провайдера AITUNNEL.</p>
+            <div class="grid-3">
+                <div class="card">
+                    <span class="ic">🎨</span>
+                    <h4>Frontend</h4>
+                    <p>HTML + CSS + JS. Без сборщиков и фреймворков — максимально «прозрачно» для преподавателя.</p>
+                </div>
+                <div class="card">
+                    <span class="ic">⚙️</span>
+                    <h4>Backend</h4>
+                    <p>FastAPI · Pydantic · StaticFiles. 3 эндпоинта: <code>/api/generate</code>, <code>/api/checklist</code>, <code>/api/document</code>.</p>
+                </div>
+                <div class="card">
+                    <span class="ic">🧠</span>
+                    <h4>LLM-слой</h4>
+                    <p>Официальный OpenAI-совместимый API AITUNNEL. Две модели: <code>gemini-2.5-flash</code> и <code>minimax-m3</code>.</p>
+                </div>
+            </div>
+            <div class="hl" style="margin-top:20px;">
+                <strong>Принцип:</strong> каждый вызов — отдельный, по триггеру (кнопке). Чек-лист и шаблон документа <em>не</em> генерируются «заранее» — это бережёт токены и сокращает время первого ответа.
+            </div>
+        </div>
+    </section>
+
+    <!-- ============= SLIDE 5: PIPELINE ============= -->
+    <section class="slide" data-title="Двухэтапный пайплайн">
+        <div class="slide-inner">
+            <span class="slide-num">Слайд 05</span>
+            <h2>🔁 Двухэтапный <span class="accent">LLM-пайплайн</span></h2>
+            <p class="lead">Главное техническое решение проекта. Один запрос пользователя проходит через две независимые LLM, что снижает риск галлюцинаций и «воды».</p>
+            <div class="pipeline">
+                <div class="pipe-step">
+                    <div class="num">1</div>
+                    <h4>Юрист-консультант</h4>
+                    <div class="model">gemini-2.5-flash</div>
+                    <div class="role">Быстрый черновик (до 4000 токенов)</div>
+                </div>
+                <div class="pipe-arrow">→</div>
+                <div class="pipe-step">
+                    <div class="num">2</div>
+                    <h4>Senior-асессор</h4>
+                    <div class="model">minimax-m3</div>
+                    <div class="role">Проверка + финальная сборка</div>
+                </div>
+                <div class="pipe-arrow">→</div>
+                <div class="pipe-step">
+                    <div class="num">3</div>
+                    <h4>Пользователь</h4>
+                    <div class="model">## Итоговый ответ</div>
+                    <div class="role">Только «чистый» эталон</div>
+                </div>
+            </div>
+            <div class="grid-2">
+                <div class="card">
+                    <h4>Этап LLM-1: черновик</h4>
+                    <p>Системный промпт: «Ты — квалифицированный юрист РФ». T=0.2, ≤ 150 слов, кириллица, без выдуманных статей и ФИО.</p>
+                </div>
+                <div class="card">
+                    <h4>Этап LLM-2: асессор</h4>
+                    <p>Системный промпт: «Ты — Senior-асессор». Делает 5 внутренних проверок, <em>но в ответе показывает только шаг 5</em>.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============= SLIDE 6: WHY TWO MODELS ============= -->
+    <section class="slide" data-title="Почему две модели">
+        <div class="slide-inner">
+            <span class="slide-num">Слайд 06</span>
+            <h2>🤝 Почему <span class="accent">две</span> разные модели</h2>
+            <table class="table">
+                <thead>
+                    <tr><th>Критерий</th><th>LLM-1 (черновик)</th><th>LLM-2 (асессор)</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Модель</td><td><code>gemini-2.5-flash</code></td><td><code>minimax-m3</code></td></tr>
+                    <tr><td>Скорость</td><td>⚡ 5–15 c</td><td>🐢 30–90 c (reasoning)</td></tr>
+                    <tr><td>Стоимость</td><td>💰 низкая</td><td>💰💰 средняя</td></tr>
+                    <tr><td>Сильная сторона</td><td>быстрые черновики, чек-листы</td><td>глубокий анализ, итоговая сборка</td></tr>
+                    <tr><td>Роль в пайплайне</td><td>«разведка» + простые задачи</td><td>«эксперт-асессор»</td></tr>
+                </tbody>
+            </table>
+            <div class="hl ok">
+                <strong>Эффект:</strong> скорость первой модели компенсирует медлительность reasoning-модели, а reasoning-модель отфильтровывает галлюцинации и подтягивает юридическую точность.
+            </div>
+        </div>
+    </section>
+
+    <!-- ============= SLIDE 7: PROMPT ENGINEERING ============= -->
+    <section class="slide" data-title="Промпт-инжиниринг">
+        <div class="slide-inner">
+            <span class="slide-num">Слайд 07</span>
+            <h2>🧪 Промпт-<span class="accent">инжиниринг</span> — сердце проекта</h2>
+            <p class="lead">Три системных промпта, каждый со своей ролью и жёсткими правилами. Это «программный код» проекта, написанный на естественном языке.</p>
+            <pre><span class="com"># LLM-1: юрист-консультант</span>
+<span class="key">Роль:</span> квалифицированный юрист РФ
+<span class="key">Задача:</span> правовой анализ + консультация
+<span class="key">База:</span> Конституция, ГК/УК/ТК РФ, актуальные редакции, практика ВС РФ
+<span class="key">Жёсткие правила:</span>
+  - <span class="str">Не придумывай</span> номера дел, суммы, пошлины
+  - <span class="str">Не выдумывай</span> статьи: пиши «[соответствующая норма]»
+  - Объём ≤ 150 слов, кириллица, анонимность
+  - Если данных не хватает — задай 1–2 уточняющих вопроса
+
+<span class="com"># LLM-2: асессор</span>
+<span class="key">Внутренние шаги:</span> нормативная база → практика → расчёты → анти-вода → сборка
+<span class="key">В ОТВЕТ ВЫВОДИТЬ ТОЛЬКО:</span>
+  <span class="str">## Итоговый ответ</span>
+  <далее текст консультации 400–700 слов>
+
+<span class="com"># Чек-лист / шаблон документа</span> — свои промпты, оба завязаны на финал LLM-2</pre>
+        </div>
+    </section>
+
+    <!-- ============= SLIDE 8: DEFENSE FROM HALLUCINATIONS ============= -->
+    <section class="slide" data-title="Защита от галлюцинаций">
+        <div class="slide-inner">
+            <span class="slide-num">Слайд 08</span>
+            <h2>🛡 Защита от <span class="accent">галлюцинаций</span></h2>
+            <p class="lead">LLM-асессор нужен не «для красоты» — он ловит конкретные классы ошибок LLM-1.</p>
+            <div class="grid-2">
+                <div>
+                    <h3>Класс 1: выдуманные нормы</h3>
+                    <p>Асессор видит, что LLM-1 сослался на «ст. 14.7 КоАП РФ», и в финале либо подтверждает, либо заменяет плейсхолдером.</p>
+                    <h3>Класс 2: лишняя «вода»</h3>
+                    <p>Фразы-паразиты, дисклеймеры, повтор вопроса — отсекаются на шаге 4 асессора.</p>
+                </div>
+                <div>
+                    <h3>Класс 3: ошибки в сроках</h3>
+                    <p>Сроки исковой давности, уведомлений, претензионного порядка — проверяются на шаге 3.</p>
+                    <h3>Класс 4: транслитерация</h3>
+                    <p>Жёсткое правило в обоих промптах: «только кириллица, никакой латиницы».</p>
+                </div>
+            </div>
+            <div class="hl warn">
+                <strong>Страховка № 2 (код):</strong> функция <code>_strip_to_final_answer()</code> в <code>llm_chain.py</code> — даже если LLM-2 просочит служебные шаги 1–4, фронтенд получит только блок от <code>## Итоговый ответ</code>.
+            </div>
+        </div>
+    </section>
+
+    <!-- ============= SLIDE 9: STACK ============= -->
+    <section class="slide" data-title="Стек технологий">
+        <div class="slide-inner">
+            <span class="slide-num">Слайд 09</span>
+            <h2>🧰 Стек <span class="accent">технологий</span></h2>
+            <div class="grid-4">
+                <div class="card"><span class="ic">🐍</span><h4>Python 3.11</h4><p>Язык бэкенда</p></div>
+                <div class="card"><span class="ic">⚡</span><h4>FastAPI</h4><p>HTTP-сервер + автодокументация</p></div>
+                <div class="card"><span class="ic">📦</span><h4>Uvicorn</h4><p>ASGI-сервер</p></div>
+                <div class="card"><span class="ic">📑</span><h4>Pydantic</h4><p>Валидация моделей запросов/ответов</p></div>
+                <div class="card"><span class="ic">🌐</span><h4>Vanilla JS</h4><p>Фронтенд без сборщиков</p></div>
+                <div class="card"><span class="ic">🎨</span><h4>Custom CSS</h4><p>Тёмная неоновая тема, без Tailwind</p></div>
+                <div class="card"><span class="ic">📝</span><h4>marked.js</h4><p>Markdown → HTML на клиенте</p></div>
+                <div class="card"><span class="ic">📄</span><h4>ReportLab</h4><p>Генерация PDF с кириллицей</p></div>
+                <div class="card"><span class="ic">🧠</span><h4>AITUNNEL API</h4><p>OpenAI-совместимый шлюз LLM</p></div>
+                <div class="card"><span class="ic">🔐</span><h4>python-dotenv</h4><p>Безопасное хранение ключей</p></div>
+                <div class="card"><span class="ic">📡</span><h4>Requests</h4><p>HTTP-клиент к провайдеру</p></div>
+                <div class="card"><span class="ic">🪟</span><h4>PowerShell 5.1</h4><p>Окружение разработки</p></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============= SLIDE 10: FEATURES ============= -->
+    <section class="slide" data-title="Функциональность">
+        <div class="slide-inner">
+            <span class="slide-num">Слайд 10</span>
+            <h2>✨ Что умеет <span class="accent">ClickJurist</span></h2>
+            <div class="grid-3">
+                <div class="card">
+                    <span class="ic">🧠</span>
+                    <h4>Юридическая консультация</h4>
+                    <p>Структурированный ответ 400–700 слов по законодательству РФ. Со ссылками на нормы, но без выдумок.</p>
+                </div>
+                <div class="card">
+                    <span class="ic">✅</span>
+                    <h4>Чек-лист действий</h4>
+                    <p>5–10 конкретных шагов: что подготовить, куда подать, в какой срок. Генерируется по кнопке.</p>
+                </div>
+                <div class="card">
+                    <span class="ic">📄</span>
+                    <h4>Шаблон документа</h4>
+                    <p>Исковое заявление, претензия или жалоба — с правильной шапкой, обоснованием и приложениями.</p>
+                </div>
+                <div class="card">
+                    <span class="ic">📥</span>
+                    <h4>Скачивание в PDF</h4>
+                    <p>Системный диалог печати → «Сохранить как PDF». Кириллица настроена через ReportLab.</p>
+                </div>
+                <div class="card">
+                    <span class="ic">📋</span>
+                    <h4>Копирование в буфер</h4>
+                    <p>Один клик — и консультация или шаблон в буфере обмена. С подтверждением «✓ Скопировано».</p>
+                </div>
+                <div class="card">
+                    <span class="ic">🗑</span>
+                    <h4>Очистка формы</h4>
+                    <p>Одна кнопка сбрасывает всё: ввод, результаты, чек-лист, шаблон — для нового вопроса.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============= SLIDE 11: ROADMAP ============= -->
+    <section class="slide" data-title="Путь разработки">
+        <div class="slide-inner">
+            <span class="slide-num">Слайд 11</span>
+            <h2>🛤 Путь <span class="accent">разработки</span></h2>
+            <p class="lead">Проект делался итерациями: от проверки доступа к LLM до финального UX-дизайна.</p>
+            <div class="timeline">
+                <div class="tl-item">
+                    <div class="step">Этап 1 · Разведка</div>
+                    <h4>Изучение AITUNNEL API</h4>
+                    <p>Документация, проверка авторизации, тестовые запросы, выбор моделей. <code>test_aitunnel.py</code>.</p>
+                </div>
+                <div class="tl-item">
+                    <div class="step">Этап 2 · Каркас</div>
+                    <h4>FastAPI + фронтенд</h4>
+                    <p>Скелет бэкенда, эндпоинты <code>/api/generate</code>, статика, базовая HTML-форма.</p>
+                </div>
+                <div class="tl-item">
+                    <div class="step">Этап 3 · Промпты</div>
+                    <h4>Системные промпты</h4>
+                    <p>Три промпта: юрист, асессор, чек-лист. Эмпирический подбор <code>temperature</code> и <code>max_tokens</code>.</p>
+                </div>
+                <div class="tl-item">
+                    <div class="step">Этап 4 · Качество</div>
+                    <h4>Защита от галлюцинаций</h4>
+                    <p>Стриппинг <code>## Итоговый ответ</code>, ретраи на пустой content, fallback на черновик LLM-1.</p>
+                </div>
+                <div class="tl-item">
+                    <div class="step">Этап 5 · Документы</div>
+                    <h4>Шаблоны и PDF</h4>
+                    <p>Эндпоинт <code>/api/document</code> с типами <code>isk/pretension/zhaloba</code>, генерация PDF через ReportLab с кириллицей.</p>
+                </div>
+                <div class="tl-item">
+                    <div class="step">Этап 6 · UX</div>
+                    <h4>Полировка интерфейса</h4>
+                    <p>Лоадер «Ваш запрос принят», кнопки копирования, очистка формы, адаптивная вёрстка.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============= SLIDE 12: TROUBLESHOOTING ============= -->
+    <section class="slide" data-title="Проблемы и решения">
+        <div class="slide-inner">
+            <span class="slide-num">Слайд 12</span>
+            <h2>🐛 Трудности и <span class="accent">решения</span></h2>
+            <table class="table">
+                <thead>
+                    <tr><th>Проблема</th><th>Решение</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Таймаут <code>minimax-m3</code> при <code>max_tokens=50000</code></td>
+                        <td>Снизили до <code>8000</code> (≈ 30 000 символов — хватает). Управляется через <code>.env</code>.</td>
+                    </tr>
+                    <tr>
+                        <td>Провайдер возвращает <code>content: null</code> при перегрузке</td>
+                        <td>Ретраи с задержкой 5 с (<code>RETRY_ON_NULL=2</code>) + таймаут 600 с на запрос.</td>
+                    </tr>
+                    <tr>
+                        <td>Кириллица в PDF — «крякозябры»</td>
+                        <td>Регистрация TTF-шрифта <code>FreeSans</code> в ReportLab; fallback на <code>DejaVuSans</code>.</td>
+                    </tr>
+                    <tr>
+                        <td>Модель выводит служебные шаги 1–4 асессора</td>
+                        <td>Жёсткое правило в промпте + страховочный <code>_strip_to_final_answer()</code> в коде.</td>
+                    </tr>
+                    <tr>
+                        <td>PowerShell 5.x не поддерживает <code>&&</code></td>
+                        <td>Используем <code>;</code>, <code>$HOME</code> и <code>$PSVersionTable.PSVersion</code> для проверки окружения.</td>
+                    </tr>
+                    <tr>
+                        <td>Кириллические пути ломают <code>cd</code></td>
+                        <td>Все пути в <code>.env</code> и в коде — относительные или ASCII-совместимые.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- ============= SLIDE 13: RESULTS ============= -->
+    <section class="slide" data-title="Результаты">
+        <div class="slide-inner">
+            <span class="slide-num">Слайд 13</span>
+            <h2>📊 Результаты и <span class="accent">метрики</span></h2>
+            <div class="stats">
+                <div class="stat"><div class="v">2</div><div class="l">LLM в пайплайне</div></div>
+                <div class="stat"><div class="v">3</div><div class="l">эндпоинта API</div></div>
+                <div class="stat"><div class="v">3</div><div class="l">типа документа</div></div>
+                <div class="stat"><div class="v">1</div><div class="l">PDF-эндпоинт</div></div>
+            </div>
+            <div class="grid-2" style="margin-top:14px;">
+                <div class="card">
+                    <h4>✅ Что работает</h4>
+                    <ul>
+                        <li>Юридическая консультация 400–700 слов на русском</li>
+                        <li>Структурированный чек-лист с глаголами в инфинитиве</li>
+                        <li>Корректные шаблоны иска / претензии / жалобы</li>
+                        <li>PDF на кириллице (ReportLab + FreeSans)</li>
+                        <li>Стрим лоадера «Ваш запрос принят — ожидайте»</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h4>📈 Что можно улучшить</h4>
+                    <ul>
+                        <li>Streaming-вывод ответа (сейчас — POST → JSON)</li>
+                        <li>Кеш повторных вопросов (TTL 24 ч)</li>
+                        <li>Логирование токенов и стоимости запросов</li>
+                        <li>Альтернативные модели для LLM-2 (Claude Sonnet, GPT-4o)</li>
+                        <li>Подключение правовой базы (Гарант / Консультант+) через RAG</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============= SLIDE 14: CONCLUSION ============= -->
+    <section class="slide title-slide" data-title="Заключение">
+        <div class="slide-inner">
+            <span class="slide-num">Слайд 14</span>
+            <h2>💡 Главный <span class="accent">вывод</span></h2>
+            <p class="lead" style="margin: 0 auto 30px; text-align:center; max-width: 900px;">
+                LLM в production — это не «магический чёрный ящик», а <strong style="color:var(--accent-cyan);">инженерная дисциплина</strong>:
+                выбор моделей под задачу, продуманные промпты, защита от галлюцинаций, экономия токенов и UX, понятный человеку без юридического образования.
+            </p>
+            <div class="hl ok" style="max-width: 800px; margin: 0 auto;">
+                <strong>ClickJurist</strong> показывает, как из трёх системных промптов, двух моделей и 300 строк Python получается рабочий юридический сервис,
+                который действительно помогает людям — и при этом <em>прозрачен для проверки</em>.
+            </div>
+            <div style="margin-top: 40px; font-size: 1.2rem; color: var(--text-secondary);">
+                <strong style="color:var(--accent-cyan);">Спасибо за внимание!</strong><br>
+                Проект выполнен в рамках курса «Специалист по ИИ-инструментам: запросы и автоматизация без кода».<br>
+                Готов ответить на вопросы по архитектуре, промптам или коду.
+            </div>
+        </div>
+    </section>
+
+</div>
+
+<!-- ==== NAVIGATION ==== -->
+<div class="nav">
+    <button id="prev" title="Назад (←)">‹</button>
+    <div class="dots" id="dots"></div>
+    <button id="next" title="Вперёд (→)">›</button>
+    <button id="print" title="Распечатать / PDF (P)">🖨</button>
+    <button id="fs" title="Полный экран (F)">⛶</button>
+</div>
+
+<div class="help">
+    <kbd>←</kbd> <kbd>→</kbd> — навигация &nbsp;·&nbsp; <kbd>F</kbd> — полный экран &nbsp;·&nbsp; <kbd>P</kbd> — печать PDF
+</div>
+
+<script>
+    const slides = document.querySelectorAll('.slide');
+    const total = slides.length;
+    let cur = 0;
+    document.getElementById('total').textContent = total;
+
+    const progress = document.getElementById('progress');
+    const curEl = document.getElementById('cur');
+    const dotsEl = document.getElementById('dots');
+    const prevBtn = document.getElementById('prev');
+    const nextBtn = document.getElementById('next');
+
+    for (let i = 0; i < total; i++) {
+        const d = document.createElement('div');
+        d.className = 'dot' + (i === 0 ? ' active' : '');
+        d.addEventListener('click', () => goTo(i));
+        dotsEl.appendChild(d);
+    }
+
+    function goTo(idx) {
+        if (idx < 0 || idx >= total || idx === cur) return;
+        slides[cur].classList.remove('active');
+        slides[cur].classList.add('exit-left');
+        setTimeout(() => slides[cur === idx ? 0 : cur]?.classList.remove('exit-left'), 500);
+
+        cur = idx;
+        slides[cur].classList.add('active');
+        update();
+    }
+
+    function next() { goTo(Math.min(cur + 1, total - 1)); }
+    function prev() { goTo(Math.max(cur - 1, 0)); }
+
+    function update() {
+        curEl.textContent = cur + 1;
+        progress.style.width = ((cur + 1) / total * 100) + '%';
+        document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === cur));
+        prevBtn.disabled = cur === 0;
+        nextBtn.disabled = cur === total - 1;
+    }
+
+    prevBtn.addEventListener('click', prev);
+    nextBtn.addEventListener('click', next);
+    document.getElementById('print').addEventListener('click', () => window.print());
+    document.getElementById('fs').addEventListener('click', () => {
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+        else document.exitFullscreen();
+    });
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); next(); }
+        else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev(); }
+        else if (e.key === 'Home') goTo(0);
+        else if (e.key === 'End') goTo(total - 1);
+        else if (e.key === 'f' || e.key === 'F' || e.key === 'а' || e.key === 'А') {
+            document.documentElement.requestFullscreen();
+        }
+        else if (e.key === 'p' || e.key === 'P' || e.key === 'з' || e.key === 'З') {
+            window.print();
+        }
+    });
+
+    document.getElementById('stage').addEventListener('click', e => {
+        if (e.target.closest('button, a, .dot, pre, code, .card')) return;
+        const x = e.clientX / window.innerWidth;
+        if (x > 0.55) next();
+        else if (x < 0.45) prev();
+    });
+
+    let tx = 0;
+    document.addEventListener('touchstart', e => tx = e.touches[0].clientX, { passive: true });
+    document.addEventListener('touchend', e => {
+        const dx = e.changedTouches[0].clientX - tx;
+        if (Math.abs(dx) > 60) (dx < 0 ? next : prev)();
+    }, { passive: true });
+
+    update();
+</script>
+</body>
+</html>

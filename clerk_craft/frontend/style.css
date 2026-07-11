@@ -1,0 +1,543 @@
+/* ClickJurist - Умный юридический помощник */
+/* CSS Reset & переменные */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --bg-dark: #1a1f3a;
+    --bg-medium: #2a2f4a;
+    --bg-light: #3a3f5a;
+    --accent-cyan: #00d9ff;
+    --accent-cyan-dim: #00b8d4;
+    --text-primary: #ffffff;
+    --text-secondary: #b0b8d0;
+    --border-glow: rgba(0, 217, 255, 0.4);
+    --shadow-glow: 0 0 30px rgba(0, 217, 255, 0.3);
+    --gradient-primary: linear-gradient(135deg, #00d9ff 0%, #0099cc 100%);
+    --gradient-bg: linear-gradient(180deg, #1a1f3a 0%, #2a2f4a 100%);
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--gradient-bg);
+    color: var(--text-primary);
+    min-height: 100vh;
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+.app-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ============= HEADER ============= */
+.header {
+    text-align: center;
+    padding: 30px 0 20px;
+}
+
+.brand-container {
+    position: relative;
+    display: inline-block;
+    padding: 20px 40px;
+}
+
+.shield-bg {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 200px;
+    height: 200px;
+    fill: var(--bg-medium);
+    filter: drop-shadow(0 0 20px var(--border-glow));
+    z-index: 0;
+}
+
+.scales-img {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100px;
+    height: 100px;
+    z-index: 1;
+    filter: drop-shadow(0 0 10px var(--accent-cyan));
+}
+
+.brand-name {
+    position: relative;
+    z-index: 2;
+    font-size: 2.5rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    margin-top: 15px;
+    color: var(--text-primary);
+    text-shadow: 0 0 20px var(--border-glow);
+}
+
+.brand-highlight {
+    color: var(--accent-cyan);
+}
+
+.tagline {
+    position: relative;
+    z-index: 2;
+    color: var(--text-secondary);
+    font-size: 1rem;
+    margin-top: 5px;
+}
+
+/* ============= MAIN ============= */
+.main-content {
+    flex: 1;
+    padding: 30px 0;
+}
+
+.input-section {
+    margin-bottom: 20px;
+}
+
+.input-label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: var(--text-primary);
+    font-size: 1.1rem;
+}
+
+.text-input {
+    width: 100%;
+    min-height: 120px;
+    padding: 16px;
+    background: var(--bg-medium);
+    border: 2px solid transparent;
+    border-radius: 12px;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 1rem;
+    resize: vertical;
+    transition: all 0.3s ease;
+}
+
+.text-input:focus {
+    outline: none;
+    border-color: var(--accent-cyan);
+    box-shadow: var(--shadow-glow);
+}
+
+.text-input::placeholder {
+    color: var(--text-secondary);
+}
+
+/* ============= BUTTONS ============= */
+.action-buttons {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: var(--text-primary);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-primary {
+    background: var(--gradient-primary);
+    box-shadow: 0 4px 20px rgba(0, 217, 255, 0.4);
+}
+
+.btn-primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 30px rgba(0, 217, 255, 0.6);
+}
+
+.btn-action {
+    background: var(--bg-light);
+    border: 1px solid var(--border-glow);
+}
+
+.btn-action:hover:not(:disabled) {
+    background: var(--bg-medium);
+    border-color: var(--accent-cyan);
+    transform: translateY(-2px);
+}
+
+.btn-secondary {
+    background: var(--bg-light);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: var(--bg-medium);
+    transform: translateY(-2px);
+}
+
+.copy-btn {
+    margin-top: 15px;
+    display: none;
+}
+
+/* ============= LOADER ============= */
+.loader-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(26, 31, 58, 0.85);
+    backdrop-filter: blur(6px);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.loader-overlay.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.spinner {
+    width: 60px;
+    height: 60px;
+    border: 4px solid rgba(0, 217, 255, 0.2);
+    border-top-color: var(--accent-cyan);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loader-text {
+    color: var(--accent-cyan);
+    font-size: 1.1rem;
+    font-weight: 500;
+    text-align: center;
+    max-width: 80%;
+}
+
+/* ============= OUTPUT ============= */
+.output-section {
+    background: var(--bg-medium);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(0, 217, 255, 0.1);
+}
+
+.output-title,
+.extra-title {
+    color: var(--accent-cyan);
+    font-size: 1.3rem;
+    margin-bottom: 16px;
+    font-weight: 600;
+}
+
+.markdown-output {
+    color: var(--text-primary);
+    line-height: 1.7;
+    font-size: 1rem;
+}
+
+.markdown-output h1,
+.markdown-output h2,
+.markdown-output h3,
+.markdown-output h4 {
+    color: var(--accent-cyan);
+    margin-top: 20px;
+    margin-bottom: 12px;
+}
+
+.markdown-output h1 { font-size: 1.8rem; }
+.markdown-output h2 { font-size: 1.5rem; }
+.markdown-output h3 { font-size: 1.3rem; }
+
+.markdown-output p {
+    margin-bottom: 12px;
+}
+
+.markdown-output ul,
+.markdown-output ol {
+    margin-left: 24px;
+    margin-bottom: 12px;
+}
+
+.markdown-output li {
+    margin-bottom: 6px;
+}
+
+.markdown-output code {
+    background: var(--bg-dark);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    color: var(--accent-cyan);
+}
+
+.markdown-output strong {
+    color: var(--accent-cyan);
+    font-weight: 600;
+}
+
+.markdown-output blockquote {
+    border-left: 3px solid var(--accent-cyan);
+    padding-left: 12px;
+    margin: 12px 0;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+/* ============= EXTRA SECTIONS (CHECKLIST, DOCUMENT) ============= */
+.extra-section {
+    background: var(--bg-medium);
+    border-radius: 12px;
+    padding: 24px;
+    margin-top: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(0, 217, 255, 0.15);
+    display: none;
+    animation: fadeIn 0.4s ease;
+}
+
+.extra-section.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.checklist-content ul,
+.document-content ul {
+    list-style: none;
+    margin-left: 0;
+}
+
+.checklist-content input[type="checkbox"] {
+    margin-right: 10px;
+    transform: scale(1.3);
+    cursor: pointer;
+    accent-color: var(--accent-cyan);
+}
+
+.checklist-content li,
+.document-content li {
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.checklist-content li:last-child,
+.document-content li:last-child {
+    border-bottom: none;
+}
+
+/* ============= DOCUMENT TYPE SELECTOR ============= */
+.doc-type-selector {
+    background: var(--bg-dark);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border: 1px dashed var(--border-glow);
+}
+
+.selector-hint {
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+    font-size: 0.95rem;
+}
+
+.doc-type-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.doc-type-btn {
+    flex: 1;
+    min-width: 180px;
+}
+
+.document-content {
+    color: var(--text-primary);
+    line-height: 1.7;
+    background: var(--bg-dark);
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid rgba(0, 217, 255, 0.1);
+}
+
+.document-content pre {
+    background: var(--bg-medium);
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    font-family: 'Courier New', monospace;
+    color: var(--text-primary);
+    margin: 12px 0;
+    border-left: 3px solid var(--accent-cyan);
+}
+
+.document-content code {
+    background: var(--bg-medium);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--accent-cyan);
+}
+
+/* ============= DOC ACTIONS (PDF / COPY) ============= */
+.doc-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 18px;
+    flex-wrap: wrap;
+}
+
+.doc-action-btn {
+    flex: 1;
+    min-width: 200px;
+}
+
+/* ============= FOOTER ============= */
+.footer {
+    padding: 20px 0;
+    text-align: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.footer-btn {
+    background: transparent;
+    border: 1px solid var(--border-glow);
+    padding: 8px 20px;
+    font-size: 0.9rem;
+}
+
+.footer-btn:hover:not(:disabled) {
+    background: var(--bg-medium);
+    border-color: var(--accent-cyan);
+}
+
+/* ============= RESPONSIVE ============= */
+@media (max-width: 768px) {
+    .brand-name {
+        font-size: 1.8rem;
+    }
+    .action-buttons {
+        flex-direction: column;
+    }
+    .btn {
+        width: 100%;
+    }
+    .doc-type-buttons {
+        flex-direction: column;
+    }
+    .doc-type-btn {
+        width: 100%;
+    }
+    .doc-actions {
+        flex-direction: column;
+    }
+    .doc-action-btn {
+        width: 100%;
+    }
+}
+
+/* ============= PRINT (для «Скачать PDF-шаблон») ============= */
+@media print {
+    /* Скрываем всё, кроме самого шаблона документа */
+    body * {
+        visibility: hidden;
+    }
+    #document-section,
+    #document-section * {
+        visibility: visible;
+    }
+
+    /* Растягиваем секцию документа на всю страницу печати */
+    #document-section {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        padding: 24px 32px;
+        background: #ffffff !important;
+        color: #000000 !important;
+        border: none !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        display: block !important;
+        animation: none !important;
+    }
+
+    /* Заголовок секции — в человеческом виде */
+    #document-section .extra-title {
+        color: #000 !important;
+        text-align: center;
+        font-size: 1.6rem;
+        margin-bottom: 20px;
+    }
+
+    /* Скрываем селектор типа и панель действий внутри секции */
+    #doc-type-selector,
+    #doc-actions {
+        display: none !important;
+    }
+
+    /* Содержимое документа — чёрное на белом, читабельно */
+    .document-content {
+        background: #ffffff !important;
+        color: #000000 !important;
+        border: none !important;
+        padding: 0 !important;
+    }
+    .document-content h1,
+    .document-content h2,
+    .document-content h3,
+    .document-content h4 {
+        color: #000 !important;
+    }
+    .document-content pre,
+    .document-content code {
+        background: #f4f4f4 !important;
+        color: #000 !important;
+    }
+
+    /* Убираем фон страницы */
+    body {
+        background: #ffffff !important;
+    }
+}
