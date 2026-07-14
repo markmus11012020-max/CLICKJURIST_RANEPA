@@ -26,3 +26,8 @@ build/
 # Временные файлы
 *.tmp
 *.temp
+
+# Usage-лог LLM (статистика запросов и стоимость)
+backend/usage.jsonl
+
+

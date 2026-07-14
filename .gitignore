@@ -62,4 +62,9 @@ Logotip2.html
 /checklist.json
 /generate.json
 
+# ===== Usage-лог LLM (содержит статистику и стоимость, но в общем безопасный) =====
+clerk_craft/backend/usage.jsonl
+/usage.jsonl
+
+
 

@@ -19,6 +19,11 @@ from clerk_craft.backend.services.llm_chain import (
     generate_checklist,
     generate_document,
 )
+from clerk_craft.backend.services.usage import (
+    aggregate,
+    PRICE_TABLE,
+    LOG_PATH,
+)
 
 
 # Регистрация кириллического шрифта для PDF
@@ -170,7 +175,7 @@ async def generate_pdf(request: QueryRequest):
     if not request.query or not request.query.strip():
         raise HTTPException(status_code=400, detail="Запрос не может быть пустым")
 
-    result = run_llm_pipeline(request.query.strip())
+    result = run_llm_pipeline(request.query.strip(), endpoint="pdf")
 
     if "error" in result:
         raise HTTPException(status_code=500, detail=result["error"])
@@ -261,6 +266,30 @@ async def generate_pdf(request: QueryRequest):
 async def health_check():
     """Проверка состояния сервера."""
     return {"status": "ok", "message": "Сервер ClickJurist работает"}
+
+
+@app.get("/api/stats")
+async def stats_endpoint(window: str = "day"):
+    """
+    Статистика использования LLM (расход токенов и стоимость) из usage.jsonl.
+
+    Query-параметр `window`:
+      - "day"   — за последние 24 ч (по умолчанию)
+      - "week"  — за последние 7 дней
+      - "month" — за последние 30 дней
+      - "all"   — за всё время
+    """
+    if window not in ("day", "week", "month", "all"):
+        raise HTTPException(
+            status_code=400,
+            detail="window должен быть одним из: day, week, month, all",
+        )
+    return {
+        "window": window,
+        "log_path": str(LOG_PATH),
+        "price_table": PRICE_TABLE,
+        **aggregate(window=window),
+    }
 
 
 if __name__ == "__main__":
