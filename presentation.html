@@ -306,6 +306,37 @@
     .hl.warn { border-color: rgba(251,146,60,0.4); background: linear-gradient(135deg, rgba(251,146,60,0.1), rgba(167,139,250,0.05)); }
     .hl.ok   { border-color: rgba(52,211,153,0.4); background: linear-gradient(135deg, rgba(52,211,153,0.1), rgba(0,217,255,0.05)); }
 
+    .shots {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px;
+        margin: 14px 0 4px;
+    }
+    .shot {
+        background: var(--bg-medium);
+        border: 1px solid rgba(0,217,255,0.15);
+        border-radius: 10px;
+        padding: 10px;
+        transition: transform 0.25s ease, border-color 0.25s ease;
+    }
+    .shot:hover { transform: translateY(-3px); border-color: var(--accent-cyan); }
+    .shot img {
+        width: 100%;
+        height: 110px;
+        object-fit: cover;
+        border-radius: 6px;
+        display: block;
+        background: var(--bg-dark);
+    }
+    .shot .cap {
+        margin-top: 8px;
+        font-size: 0.82rem;
+        line-height: 1.4;
+        color: var(--text-secondary);
+    }
+    .shot .cap b { color: var(--accent-cyan); display:block; margin-bottom: 2px; font-size: 0.78rem; letter-spacing: 1px; text-transform: uppercase; }
+    @media (max-width: 1100px) { .shots { grid-template-columns: repeat(2, 1fr); } }
+
     .stats {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
@@ -474,7 +505,7 @@
 
 <div class="topbar">
     <div class="brand">CLICK<span>JURIST</span> · Презентация проекта</div>
-    <div class="counter"><span id="cur">1</span> / <span id="total">14</span></div>
+    <div class="counter"><span id="cur">1</span> / <span id="total">15</span></div>
 </div>
 
 <div class="stage" id="stage">
@@ -867,10 +898,49 @@
         </div>
     </section>
 
-    <!-- ============= SLIDE 14: CONCLUSION ============= -->
-    <section class="slide title-slide" data-title="Заключение">
+    <!-- ============= SLIDE 14: SCREENSHOTS ============= -->
+    <section class="slide" data-title="Скриншоты процесса">
         <div class="slide-inner">
             <span class="slide-num">Слайд 14</span>
+            <h2>📸 <span class="accent">Скриншоты</span> процесса работы и полученные результаты</h2>
+            <p class="lead">Семь ключевых кадров разработки и тестирования: от первой проверки API до финального ответа LLM.</p>
+            <div class="shots">
+                <div class="shot">
+                    <img src="assets/screenshots/1.JPG" alt="Скриншот 1">
+                    <div class="cap"><b>1 · Разведка API</b>Первая авторизация в AITUNNEL, проверка списка моделей и формата запроса.</div>
+                </div>
+                <div class="shot">
+                    <img src="assets/screenshots/2.JPG" alt="Скриншот 2">
+                    <div class="cap"><b>2 · Подбор моделей</b>Сравнение minimax-m3 и gemini-2.5-flash по скорости и качеству черновика.</div>
+                </div>
+                <div class="shot">
+                    <img src="assets/screenshots/3.JPG" alt="Скриншот 3">
+                    <div class="cap"><b>3 · Системные промпты</b>Финальные версии трёх промптов: юрист, асессор, чек-лист.</div>
+                </div>
+                <div class="shot">
+                    <img src="assets/screenshots/4.JPG" alt="Скриншот 4">
+                    <div class="cap"><b>4 · Каркас бэкенда</b>FastAPI: эндпоинты /api/generate, /api/checklist, /api/document.</div>
+                </div>
+                <div class="shot">
+                    <img src="assets/screenshots/5.JPG" alt="Скриншот 5">
+                    <div class="cap"><b>5 · UI фронтенда</b>Поле ввода, кнопки «Чек-лист» и «Документ», тёмная неоновая тема.</div>
+                </div>
+                <div class="shot">
+                    <img src="assets/screenshots/6.JPG" alt="Скриншот 6">
+                    <div class="cap"><b>6 · Пайплайн в работе</b>Лоадер «Ваш запрос принят» → ответ LLM-2 в блоке «## Итоговый ответ».</div>
+                </div>
+                <div class="shot">
+                    <img src="assets/screenshots/7.JPG" alt="Скриншот 7">
+                    <div class="cap"><b>7 · Шаблон документа</b>Сгенерированная претензия с шапкой, обоснованием и приложениями.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============= SLIDE 15: CONCLUSION ============= -->
+    <section class="slide title-slide" data-title="Заключение">
+        <div class="slide-inner">
+            <span class="slide-num">Слайд 15</span>
             <h2>💡 Главный <span class="accent">вывод</span></h2>
             <p class="lead" style="margin: 0 auto 30px; text-align:center; max-width: 900px;">
                 LLM в production — это не «магический чёрный ящик», а <strong style="color:var(--accent-cyan);">инженерная дисциплина</strong>:
