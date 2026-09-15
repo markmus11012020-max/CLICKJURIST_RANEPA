@@ -90,6 +90,7 @@ class Settings(BaseSettings):
     # --- 5. Stage 2: AITunnel ------------------------------------------------
     ROUTER_API_KEY: str = ""
     ROUTER_BASE_URL: str = "https://api.aitunnel.ru/v1"
+    ROUTER_DEFAULT_MODEL: str = "gemini-2.5-flash"
     MODEL_LLM_1: str = "deepseek-v4-flash"
     MODEL_LLM_2: str = "minimax-m3"
     MODEL_GEMINI_FACTCHECK: str = "gemini-2.5-flash"

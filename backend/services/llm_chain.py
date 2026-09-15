@@ -12,6 +12,10 @@
 Failover-оркестратор (раздел 3 ТЗ):
     * ``PRIMARY_PROVIDER=aitunnel`` → резерв YandexGPT;
     * ``PRIMARY_PROVIDER=yandex``   → резерв AITunnel;
+    * на Stage 2 (анализ + фактчекинг) цепочка ВСЕГДА заканчивается
+      на ``aitunnel`` — см. :func:`stage2_fallback_chain`. Это защищает
+      Stage 2 от падения Yandex (например, UnicodeEncodeError из-за
+      кириллицы в HTTP-заголовках): код автоматически дойдёт до Gemini.
     * при падении обоих провайдеров возвращается структурированная ошибка,
       и обработчик API отдаёт HTTP 502, не списывая бесплатный запрос.
 """
@@ -59,6 +63,7 @@ def _call_with_failover(
     temperature: float,
     max_tokens: int,
     stage: str,
+    chain: list[str] | None = None,
 ) -> tuple[str, str, bool]:
     """Вызвать LLM с автоматическим переходом на резервный провайдер.
 
@@ -68,6 +73,9 @@ def _call_with_failover(
         temperature: температура генерации.
         max_tokens: ограничение длины ответа.
         stage: метка этапа для журнала (``stage1`` / ``stage2``).
+        chain: явная цепочка провайдеров. Если ``None`` — берётся
+            :func:`fallback_chain`. Используется в Stage 2, чтобы
+            гарантировать ``aitunnel`` финальным fallback'ом.
 
     Returns:
         Кортеж ``(текст, имя_провайдера, использован_ли_failover)``.
@@ -76,7 +84,17 @@ def _call_with_failover(
         LLMError: если ВСЕ провайдеры цепочки недоступны.
     """
     errors: list[str] = []
-    for index, provider_name in enumerate(fallback_chain()):
+    provider_chain = chain if chain is not None else fallback_chain()
+    # Защита от дублей в цепочке — иначе один и тот же провайдер
+    # может быть вызван дважды подряд при попытке сделать failover.
+    seen: set[str] = set()
+    deduped_chain: list[str] = []
+    for name in provider_chain:
+        if name not in seen:
+            seen.add(name)
+            deduped_chain.append(name)
+    provider_chain = deduped_chain
+    for index, provider_name in enumerate(provider_chain):
         provider = get_provider(provider_name)
         if not provider.is_configured():
             errors.append(f"{provider_name}: провайдер не сконфигурирован")
@@ -108,6 +126,31 @@ def _call_with_failover(
 
 
 # --- STAGE 2: анализ с веб-фактчекингом ---------------------------------------
+def stage2_fallback_chain() -> list[str]:
+    """Цепочка провайдеров для Stage 2 с гарантированным failover на aitunnel.
+
+    В Stage 2 (правовой анализ + веб-фактчекинг) Gemini 2.5 Flash через
+    AITunnel — основной источник качества, поэтому он ВСЕГДА должен быть
+    последним шансом. Логика:
+
+        * берём стандартную :func:`fallback_chain` (primary/secondary);
+        * если ``aitunnel`` уже в цепочке, но не в конце — переставляем
+          его в конец, чтобы он срабатывал именно как финальный fallback;
+        * если ``aitunnel`` отсутствует — добавляем его в конец.
+
+    Это решает проблему, когда ``PRIMARY_PROVIDER=aitunnel`` и при падении
+    AITunnel + Yandex на Stage 2 цепочка заканчивалась ничем, либо
+    ``PRIMARY_PROVIDER=yandex`` и Yandex падал с UnicodeEncodeError — теперь
+    код гарантированно дойдёт до ``aitunnel`` (Gemini).
+    """
+    chain = list(fallback_chain())
+    if "aitunnel" in chain:
+        # Переставляем aitunnel в конец как финальный fallback.
+        chain = [name for name in chain if name != "aitunnel"]
+    chain.append("aitunnel")
+    return chain
+
+
 def sources_as_text(sources: list[Source], mask: MaskResult) -> str:
     """Собрать блок «Внешние источники» для промпта Stage 2."""
     if not sources:
@@ -142,6 +185,13 @@ def run_stage2(mask: MaskResult, sources: list[Source]) -> tuple[str, str, bool]
 
     Returns:
         ``(текст_анализа, провайдер, использован_ли_failover)``.
+
+    Notes:
+        В Stage 2 используется **специальная** цепочка failover — см.
+        :func:`stage2_fallback_chain`. Это гарантирует, что если Yandex
+        упал (например, с UnicodeEncodeError из-за кириллицы в заголовках
+        или по любой другой причине), система автоматически переключится
+        на AITunnel (Gemini 2.5 Flash) и обработает запрос до конца.
     """
     prompt = prompts.PROMPT_STAGE2_ANALYSIS
     prompt = prompt.replace("{{MIN_SOURCES}}", str(settings.WEB_SEARCH_MIN_SOURCES))
@@ -159,6 +209,7 @@ def run_stage2(mask: MaskResult, sources: list[Source]) -> tuple[str, str, bool]
         temperature=0.2,
         max_tokens=3000,
         stage="stage2",
+        chain=stage2_fallback_chain(),
     )
 
 
