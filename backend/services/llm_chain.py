@@ -1,0 +1,405 @@
+"""Мегапайплайн обработки юридического запроса (разделы 2 и 3 ТЗ).
+
+Схема обработки:
+
+    STAGE 1: КОНТУР РФ (152-ФЗ)
+      YandexGPT / Ollama + обязательная regex-страховка → [NAME_1], [ADDRESS_1]
+        ↓ передаётся только обезличенный текст
+    STAGE 2: Web-фактчекинг (2–3 источника) → Gemini 2.5 Flash (AITunnel)
+        ↓
+    ФИНАЛ: LLM-1 (черновик, <=150 слов) → LLM-2 (асессор, 400–700 слов)
+
+Failover-оркестратор (раздел 3 ТЗ):
+    * ``PRIMARY_PROVIDER=aitunnel`` → резерв YandexGPT;
+    * ``PRIMARY_PROVIDER=yandex``   → резерв AITunnel;
+    * при падении обоих провайдеров возвращается структурированная ошибка,
+      и обработчик API отдаёт HTTP 502, не списывая бесплатный запрос.
+"""
+from __future__ import annotations
+
+import logging
+import re
+import time
+from dataclasses import dataclass, field
+
+from backend.config import settings
+from backend.services import prompts
+from backend.services.pii_masker import MaskResult, mask_query
+from backend.services.providers import LLMError, fallback_chain, get_provider
+from backend.services.web_factcheck import Source, gather_sources
+
+logger = logging.getLogger("clickjurist.llm_chain")
+
+# Сколько попыток на каждом провайдере внутри цепочки failover
+ATTEMPTS_PER_PROVIDER = 2
+RETRY_SLEEP_BASE_S = 5
+
+
+@dataclass
+class PipelineResult:
+    """Итог обработки запроса клиента."""
+
+    final: str = ""
+    draft: str = ""
+    reference: str = ""
+    mask: MaskResult | None = None
+    sources: list[dict[str, str]] = field(default_factory=list)
+    citation_verified: bool = False
+    anonymized: bool = True
+    stage1_provider: str = "regex"
+    stage2_provider: str = ""
+    warning: str | None = None
+    error: str | None = None
+    used_failover: bool = False
+
+
+def _call_with_failover(
+    messages: list[dict[str, str]],
+    model: str,
+    temperature: float,
+    max_tokens: int,
+    stage: str,
+) -> tuple[str, str, bool]:
+    """Вызвать LLM с автоматическим переходом на резервный провайдер.
+
+    Args:
+        messages: сообщения чата (role/content).
+        model: имя модели для основного провайдера.
+        temperature: температура генерации.
+        max_tokens: ограничение длины ответа.
+        stage: метка этапа для журнала (``stage1`` / ``stage2``).
+
+    Returns:
+        Кортеж ``(текст, имя_провайдера, использован_ли_failover)``.
+
+    Raises:
+        LLMError: если ВСЕ провайдеры цепочки недоступны.
+    """
+    errors: list[str] = []
+    for index, provider_name in enumerate(fallback_chain()):
+        provider = get_provider(provider_name)
+        if not provider.is_configured():
+            errors.append(f"{provider_name}: провайдер не сконфигурирован")
+            continue
+
+        for attempt in range(ATTEMPTS_PER_PROVIDER):
+            try:
+                logger.info(
+                    "Вызов LLM-провайдера",
+                    extra={"provider": provider_name, "stage": stage},
+                )
+                text = provider.chat(
+                    messages=messages,
+                    model=model if provider_name == settings.PRIMARY_PROVIDER else None,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                )
+                return text, provider_name, index > 0
+            except LLMError as exc:
+                errors.append(f"{provider_name} (попытка {attempt + 1}): {exc}")
+                logger.warning(
+                    "Сбой провайдера, повтор/переключение",
+                    extra={"provider": provider_name, "stage": stage},
+                )
+                if attempt < ATTEMPTS_PER_PROVIDER - 1:
+                    time.sleep(RETRY_SLEEP_BASE_S * (attempt + 1))
+
+    raise LLMError("Все провайдеры недоступны. " + " | ".join(errors))
+
+
+# --- STAGE 2: анализ с веб-фактчекингом ---------------------------------------
+def sources_as_text(sources: list[Source], mask: MaskResult) -> str:
+    """Собрать блок «Внешние источники» для промпта Stage 2."""
+    if not sources:
+        return prompts.SOURCES_EMPTY
+
+    lines: list[str] = []
+    for number, source in enumerate(sources, start=1):
+        snippet = (source.snippet or "").strip().replace("\n", " ")[:600]
+        lines.append(
+            f"[{number}] {source.title}\n"
+            f"    URL: {source.url}\n"
+            f"    Фрагмент: {snippet or 'фрагмент недоступен'}"
+        )
+
+    if len(sources) < settings.WEB_SEARCH_MIN_SOURCES:
+        lines.append("")
+        lines.append(prompts.SOURCES_CONFLICT_NOTE)
+
+    if mask.risk_notes:
+        lines.append("")
+        lines.append(f"Замечание контура обезличивания: {mask.risk_notes}")
+
+    return "\n".join(lines)
+
+
+def run_stage2(mask: MaskResult, sources: list[Source]) -> tuple[str, str, bool]:
+    """Выполнить Stage 2 — правовой анализ обезличенного запроса.
+
+    Args:
+        mask: результат Stage 1 (маскировка ПДн).
+        sources: проверенные веб-источники (0–3 штуки).
+
+    Returns:
+        ``(текст_анализа, провайдер, использован_ли_failover)``.
+    """
+    prompt = prompts.PROMPT_STAGE2_ANALYSIS
+    prompt = prompt.replace("{{MIN_SOURCES}}", str(settings.WEB_SEARCH_MIN_SOURCES))
+    prompt = prompt.replace("{{MAX_SOURCES}}", str(settings.WEB_SEARCH_MAX_SOURCES))
+    prompt = prompt.replace("{{SOURCES}}", sources_as_text(sources, mask))
+    prompt = prompt.replace("{{MASKED_QUERY}}", mask.masked_query)
+    prompt = prompt.replace("{{ANONYMIZED_SUMMARY}}", mask.anonymized_summary)
+
+    return _call_with_failover(
+        messages=[
+            {"role": "system", "content": prompts.PROMPT_LLM_1},
+            {"role": "user", "content": prompt},
+        ],
+        model=settings.MODEL_GEMINI_FACTCHECK,
+        temperature=0.2,
+        max_tokens=3000,
+        stage="stage2",
+    )
+
+
+# --- ФИНАЛ: LLM-1 (черновик) → LLM-2 (асессор) --------------------------------
+def run_draft(masked_query: str, analysis: str = "") -> tuple[str, str, bool]:
+    """LLM-1 — быстрый черновик юридической консультации (<=150 слов)."""
+    user_content = masked_query
+    if analysis:
+        user_content = (
+            f"{masked_query}\n\n"
+            "Материалы проверки (используй как опору, не копируй целиком):\n"
+            f"{analysis}"
+        )
+    return _call_with_failover(
+        messages=[
+            {"role": "system", "content": prompts.PROMPT_LLM_1},
+            {"role": "user", "content": user_content},
+        ],
+        model=settings.MODEL_LLM_1,
+        temperature=0.2,
+        max_tokens=settings.MAX_TOKENS_LLM_1,
+        stage="llm1",
+    )
+
+
+def run_reference(masked_query: str, draft: str) -> tuple[str, str, bool]:
+    """LLM-2 — критическая проверка черновика и сборка эталонного ответа."""
+    user_content = (
+        f"ВОПРОС ПОЛЬЗОВАТЕЛЯ:\n{masked_query}\n\n"
+        f"ЧЕРНОВИК ОТ LLM-1:\n{draft}"
+    )
+    return _call_with_failover(
+        messages=[
+            {"role": "system", "content": prompts.PROMPT_LLM_2},
+            {"role": "user", "content": user_content},
+        ],
+        model=settings.MODEL_LLM_2,
+        temperature=0.3,
+        max_tokens=settings.MAX_TOKENS_LLM_2,
+        stage="llm2",
+    )
+
+
+# --- ВЕРИФИКАЦИЯ ЮРИДИЧЕСКИХ ССЫЛОК -------------------------------------------
+CITATION_PATTERN = re.compile(
+    r"(?:ст\.|стать[ия]\s|статьи\s|п\.\s?\d|ч\.\s?\d|пункт\s?\d)"
+    r"[\s\d\.\-—,]*"
+    r"(?:ГК|УК|ТК|КоАП|НК|СК|ЖК|ЗК|ГПК|УПК|КАС|АПК)?\s?РФ",
+    re.IGNORECASE,
+)
+MIN_CITATIONS = 1
+
+
+def extract_citations(text: str) -> list[str]:
+    """Извлечь из ответа ссылки на нормы права РФ."""
+    return [match.group(0).strip() for match in CITATION_PATTERN.finditer(text)]
+
+
+def verify_citations(text: str, sources: list[Source]) -> bool:
+    """Проверить наличие правовых ссылок и подтверждения источниками.
+
+    Логика раздела 2 ТЗ:
+        * хотя бы одна ссылка на норму права РФ обязательна;
+        * если источников меньше минимума — ссылки не считаются
+          верифицированными (это передаётся во фронтенд флагом
+          ``citation_verified=False``).
+    """
+    citations = extract_citations(text)
+    if len(citations) < MIN_CITATIONS:
+        return False
+    has_min_sources = len(sources) >= settings.WEB_SEARCH_MIN_SOURCES
+    return bool(has_min_sources)
+
+
+def normalize_final(text: str) -> str:
+    """Убрать служебные заголовки асессора и лишние пустые строки."""
+    cleaned = text.strip()
+    for marker in ("## Итоговый ответ", "## Итоговый Ответ", "Итоговый ответ:"):
+        if cleaned.upper().startswith(marker.upper()):
+            cleaned = cleaned[len(marker):].lstrip(" :\n")
+            break
+    else:
+        index = cleaned.upper().find("## ИТОГОВЫЙ ОТВЕТ")
+        if index != -1:
+            cleaned = cleaned[index + len("## Итоговый ответ"):].lstrip(" :\n")
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    return cleaned.strip()
+
+
+def attach_disclaimer(text: str) -> str:
+    """Добавить обязательный дисклеймер о применении генеративного ИИ."""
+    if not text:
+        return text
+    if prompts.AI_DISCLAIMER in text:
+        return text
+    return f"{text.strip()}\n\n---\n{prompts.AI_DISCLAIMER}"
+
+
+# --- ДОПОЛНИТЕЛЬНЫЕ СЕРВИСЫ ---------------------------------------------------
+def draft_checklist(masked_query: str, final_answer: str) -> str:
+    """Сгенерировать чек-лист действий на основе готовой консультации."""
+    user_content = (
+        f"СИТУАЦИЯ КЛИЕНТА (обезличено):\n{masked_query}\n\n"
+        f"ГОТОВАЯ КОНСУЛЬТАЦИЯ:\n{final_answer}"
+    )
+    text, _, _ = _call_with_failover(
+        messages=[
+            {"role": "system", "content": prompts.PROMPT_CHECKLIST},
+            {"role": "user", "content": user_content},
+        ],
+        model=settings.MODEL_LLM_1,
+        temperature=0.2,
+        max_tokens=settings.MAX_TOKENS_LLM_1,
+        stage="checklist",
+    )
+    return text
+
+
+DOC_TYPE_TITLES: dict[str, str] = {
+    "isk": "Исковое заявление",
+    "pretension": "Досудебная претензия",
+    "zhaloba": "Жалоба в вышестоящий орган",
+}
+
+
+def draft_document(masked_query: str, doc_type: str = "isk") -> str:
+    """Сгенерировать шаблон процессуального документа."""
+    title = DOC_TYPE_TITLES.get(doc_type, DOC_TYPE_TITLES["isk"])
+    system_prompt = prompts.PROMPT_DOCUMENT.replace("{{DOC_TYPE}}", title)
+    text, _, _ = _call_with_failover(
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Ситуация (обезличено):\n{masked_query}"},
+        ],
+        model=settings.MODEL_LLM_1,
+        temperature=0.2,
+        max_tokens=settings.MAX_TOKENS_LLM_1,
+        stage="document",
+    )
+    return text
+
+
+# --- ГЛАВНЫЙ ПАЙПЛАЙН ---------------------------------------------------------
+def run_pipeline(raw_query: str, with_stage2: bool = True) -> PipelineResult:
+    """Полный мегапайплайн обработки запроса клиента.
+
+    Шаги:
+        1. Stage 1 — маскировка персональных данных в контуре РФ.
+        2. Stage 2 — сбор 2–3 веб-источников и правовой анализ Gemini 2.5 Flash.
+        3. Финал — LLM-1 (черновик) → LLM-2 (эталонный ответ асессора).
+
+    Args:
+        raw_query: сырой текст запроса клиента (может содержать ПДн).
+        with_stage2: выполнять ли веб-фактчекинг и анализ (обычно ``True``).
+
+    Returns:
+        :class:`PipelineResult` с эталонным ответом либо описанием ошибки.
+        Ошибки НЕ поднимаются наружу — API возвращает их как HTTP 502.
+    """
+    started = time.time()
+    result = PipelineResult()
+
+    # --- Шаг 1: контур маскировки ПДн (российский LLM, раздел 2 ТЗ) ----------
+    try:
+        mask = mask_query(raw_query)
+    except Exception as exc:  # страховка: маскировка не должна ломать запрос
+        logger.error("Критическая ошибка контура маскировки")
+        result.error = f"Ошибка контура маскировки персональных данных: {exc}"
+        return result
+
+    result.mask = mask
+    result.anonymized = True
+    result.stage1_provider = mask.provider
+    result.warning = mask.warning
+
+    # --- Шаг 2: веб-фактчекинг и правовой анализ ---------------------------
+    sources: list[Source] = []
+    analysis = ""
+    if with_stage2:
+        try:
+            sources = gather_sources(mask.anonymized_summary or mask.masked_query)
+        except Exception:
+            logger.warning("Веб-фактчекинг недоступен, продолжаем без источников")
+            sources = []
+
+        try:
+            analysis, provider, used_failover = run_stage2(mask, sources)
+            result.stage2_provider = provider
+            result.used_failover = used_failover
+        except LLMError as exc:
+            logger.error("Stage 2 недоступен: анализ на внешней модели невозможен")
+            result.error = str(exc)
+            return result
+
+    # --- Шаг 3: черновик LLM-1 → эталон LLM-2 ------------------------------
+    try:
+        draft, _, failover_1 = run_draft(mask.masked_query, analysis)
+        result.draft = draft
+    except LLMError as exc:
+        result.error = str(exc)
+        return result
+
+    try:
+        reference, provider_2, failover_2 = run_reference(mask.masked_query, draft)
+        result.reference = reference
+        result.final = normalize_final(reference)
+        result.stage2_provider = provider_2 or result.stage2_provider
+        result.used_failover = result.used_failover or failover_1 or failover_2
+    except LLMError:
+        # Асессор недоступен — отдаём черновик, это лучше, чем ошибка
+        logger.warning("Асессор недоступен, возвращаем черновик LLM-1")
+        result.final = normalize_final(draft)
+        result.warning = (
+            "Эталонный ответ асессора недоступен: используется проверенный черновик "
+            "LLM-1."
+        )
+
+    if not result.final.strip():
+        result.error = "Модели вернули пустой ответ. Переформулируйте запрос."
+        return result
+
+    result.sources = [{"title": s.title, "url": s.url} for s in sources]
+    result.citation_verified = verify_citations(result.final, sources)
+
+    if not result.citation_verified and not result.warning:
+        result.warning = (
+            "Ссылки на нормы права не подтверждены внешними источниками: "
+            "данные требуют дополнительной проверки по официальной редакции."
+        )
+
+    logger.info(
+        "Пайплайн завершён",
+        extra={
+            "stage": "pipeline",
+            "provider": result.stage2_provider,
+            "latency_ms": int((time.time() - started) * 1000),
+        },
+    )
+    return result
+
+
+def run_consultation(raw_query: str) -> PipelineResult:
+    """Удобная обёртка: обработка запроса с полным набором этапов."""
+    return run_pipeline(raw_query, with_stage2=True)

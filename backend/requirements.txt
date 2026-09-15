@@ -1,0 +1,23 @@
+# ==============================================================================
+# ClickJurist Production — зависимости Python 3.11
+# ==============================================================================
+
+# --- Web / API ---
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.9
+
+# --- Конфигурация и валидация ---
+pydantic>=2.6.0
+pydantic-settings>=2.2.0
+python-dotenv>=1.0.1
+
+# --- HTTP-клиент (AITunnel, YandexGPT, Ollama, Web-поиск, KMS) ---
+requests>=2.31.0
+
+# --- PDF с поддержкой кириллицы ---
+reportlab>=4.1.0
+
+# --- Production-хранилище (PostgreSQL в Yandex Cloud) ---
+# Обязательно для APP_ENV=production; локально используется встроенный sqlite3.
+psycopg[binary]>=3.1.18
