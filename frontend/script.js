@@ -178,7 +178,7 @@
       label.textContent = "Бесплатно: " + sessionState.free_requests_left + " из 1";
     } else {
       chip.classList.add("locked");
-      label.textContent = "Требуется оплата";
+      label.textContent = "Первый запрос бесплатно";
     }
   }
 
