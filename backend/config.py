@@ -147,9 +147,36 @@ class Settings(BaseSettings):
     PRICE_CONSULTATION: int = 99
     PRICE_CHECKLIST: int = 100
     PRICE_DOCUMENT: int = 300
+    # Пакетный тариф «Решение проблемы под ключ» (раздел 6 ТЗ prompt160926.md).
+    PRICE_PACKAGE_BASIC: int = 390
+    PRICE_PACKAGE_PREMIUM: int = 490
 
     # --- 12. PDF -------------------------------------------------------------
     PDF_FONT_PATH: str = ""
+
+    # --- 13. JWT-авторизация (раздел 3.1 ТЗ prompt160926.md) -----------------
+    JWT_SECRET: str = "please-change-this-jwt-secret"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_TTL_DAYS: int = 30
+    JWT_COOKIE_NAME: str = "cj_session"
+    JWT_COOKIE_SECURE: bool = False  # True в production (HTTPS)
+    JWT_COOKIE_SAMESITE: str = "strict"
+
+    # --- 14. Фоновые задачи (раздел 2.1 ТЗ prompt160926.md) ------------------
+    # Режим: "memory" (локально) или "celery" (production с Redis).
+    TASK_BACKEND: Literal["memory", "celery"] = "memory"
+    CELERY_BROKER_URL: str = "redis://localhost:6379/0"
+    CELERY_RESULT_BACKEND: str = "redis://localhost:6379/1"
+    TASK_RESULT_TTL_S: int = 3600  # Хранить результат 1 час
+
+    # --- 15. Веб-фактчекинг: приоритетные домены (раздел 2.2 ТЗ) ------------
+    PRIORITY_DOMAINS: str = "consultant.ru,garant.ru,pravo.gov.ru,sozd.duma.gov.ru"
+    WEB_FETCH_TIMEOUT_S: int = 10
+    WEB_FETCH_MAX_CHARS: int = 4000
+
+    # --- 16. Guardrails: контроль галлюцинаций (раздел 5.2 ТЗ) ---------------
+    GUARDRAILS_ENABLED: bool = True
+    GUARDRAILS_MAX_RETRIES: int = 2
 
     model_config = SettingsConfigDict(
         env_file=str(ENV_FILE),
@@ -185,7 +212,14 @@ class Settings(BaseSettings):
             "checklist": self.PRICE_CHECKLIST,
             "document": self.PRICE_DOCUMENT,
             "pdf": self.PRICE_DOCUMENT,
+            "package_basic": self.PRICE_PACKAGE_BASIC,
+            "package_premium": self.PRICE_PACKAGE_PREMIUM,
         }
+
+    @property
+    def priority_domains_list(self) -> list[str]:
+        """Список приоритетных доменов для веб-фактчекинга (раздел 2.2 ТЗ)."""
+        return [d.strip().lower() for d in self.PRIORITY_DOMAINS.split(",") if d.strip()]
 
 
 settings = Settings()

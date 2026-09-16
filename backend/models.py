@@ -5,7 +5,14 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-ServiceCode = Literal["consultation", "checklist", "document", "pdf"]
+ServiceCode = Literal[
+    "consultation",
+    "checklist",
+    "document",
+    "pdf",
+    "package_basic",
+    "package_premium",
+]
 DocType = Literal["complaint", "claim", "lawsuit", "court_order_cancellation"]
 
 
@@ -113,3 +120,45 @@ class HealthResponse(BaseModel):
     kms_enabled: bool
     database: str
     storage_mode: str = "No-Data-Retention"
+
+
+class AsyncTaskResponse(BaseModel):
+    """Ответ при постановке задачи в фоновую очередь (раздел 2.1 ТЗ)."""
+
+    task_id: str
+    status: str = "pending"
+    message: str = "Задача принята в обработку"
+
+
+class AsyncTaskStatusResponse(BaseModel):
+    """Текущий статус фоновой задачи (для polling)."""
+
+    task_id: str
+    status: str
+    progress: int = 0
+    stage: str = ""
+    created_at: str | None = None
+    started_at: str | None = None
+    finished_at: str | None = None
+    result: dict | None = None
+    error: str | None = None
+
+
+class PackageRequest(BaseModel):
+    """Запрос на пакетный тариф «Решение проблемы под ключ» (раздел 6 ТЗ)."""
+
+    query: str = Field(..., min_length=3)
+    tier: Literal["basic", "premium"] = "basic"
+
+
+class PackageResponse(BaseModel):
+    """Результат пакетной генерации (консультация + чек-лист + документ)."""
+
+    consultation: str | None = None
+    checklist: str | None = None
+    document: str | None = None
+    sources: list[SourceLink] = Field(default_factory=list)
+    tier: str = "basic"
+    amount: int = 0
+    warning: str | None = None
+    error: str | None = None

@@ -657,6 +657,138 @@ footer { text-align:center; padding:40px 22px; color:var(--text-mute); font-size
 
 
 
+  /* Уменьшаем шрифты для мобильных разрешений < 480px (раздел 4.2 ТЗ). */
+
+
+
+  html, body { font-size:14px; }
+
+
+
+  h1 { font-size: clamp(24px, 7vw, 32px); }
+
+
+
+  h2 { font-size: clamp(18px, 5vw, 22px); }
+
+
+
+  h3 { font-size:15px; }
+
+
+
+  .card { padding:16px; border-radius:12px; }
+
+
+
+  .field textarea { font-size:14px; }
+
+
+
+  .btn { padding:10px 16px; font-size:14px; }
+
+
+
+  .quick-tag { font-size:12px; padding:6px 10px; }
+
+
+
+  .paywall-card { padding:20px; }
+
+
+
+  .paywall-amount { font-size:24px; }
+
+
+
+  .toast { font-size:13px; padding:10px 14px; max-width:280px; }
+
+
+
+  footer { font-size:12px; padding:24px 16px; }
+
+
+
+}
+
+
+
+/* ===== Быстрые пресеты (раздел 4.1 ТЗ prompt160926.md) ===== */
+
+.quick-tags {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin:12px 0 16px;
+}
+
+.quick-tag {
+  display:inline-block;
+  padding:8px 14px;
+  border-radius:999px;
+  border:1px solid var(--line-strong);
+  background:rgba(var(--accent-rgb), .08);
+  color:var(--text);
+  font-size:13px;
+  font-weight:500;
+  cursor:pointer;
+  transition: background .15s ease, border-color .15s ease, transform .1s ease;
+}
+
+.quick-tag:hover {
+  background:rgba(var(--accent-rgb), .18);
+  border-color:var(--accent);
+}
+
+.quick-tag:active {
+  transform:scale(.97);
+}
+
+/* ===== Аккордеоны в подвале (раздел 4.2 ТЗ prompt160926.md) ===== */
+
+.legal-accordion {
+  margin-top:12px;
+  padding:12px 14px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:rgba(255,255,255,.025);
+}
+
+.legal-accordion summary {
+  cursor:pointer;
+  font-weight:600;
+  color:var(--text);
+  font-size:14px;
+  list-style:none;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.legal-accordion summary::-webkit-details-marker {
+  display:none;
+}
+
+.legal-accordion summary::before {
+  content:"▸";
+  color:var(--accent);
+  font-size:12px;
+  transition:transform .15s ease;
+}
+
+.legal-accordion[open] summary::before {
+  transform:rotate(90deg);
+}
+
+.legal-accordion[open] {
+  background:rgba(var(--accent-rgb), .05);
+}
+
+.legal-accordion > *:not(summary) {
+  margin-top:10px;
+  color:var(--text-soft);
+  font-size:13px;
+  line-height:1.55;
 }
 
 

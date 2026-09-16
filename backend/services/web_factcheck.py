@@ -13,15 +13,27 @@
 Проверка «независимости» источников реализована в :func:`_deduplicate`:
 источники сравниваются по домену, поэтому в итоговую выдачу попадают
 действительно разные площадки (например, pravo.gov.ru и consultant.ru).
+
+Агентский сценарий (раздел 2.2 ТЗ prompt160926.md):
+    * LLM формирует поисковые запросы на основе обезличенного резюме;
+    * парсинг топ-3 результатов с очисткой HTML-тегов;
+    * фильтрация по приоритетным доменам (consultant.ru, garant.ru, pravo.gov.ru);
+    * суммаризация юридических норм через LLM.
 """
 from __future__ import annotations
 
+import logging
+import re
 from dataclasses import dataclass
+from html.parser import HTMLParser
+from typing import Any
 from urllib.parse import urlparse
 
 import requests
 
 from backend.config import settings
+
+logger = logging.getLogger("clickjurist.web_factcheck")
 
 
 @dataclass
@@ -270,4 +282,152 @@ def contour_status() -> dict[str, object]:
         "configured": configured,
         "min_sources": settings.WEB_SEARCH_MIN_SOURCES,
         "max_sources": settings.WEB_SEARCH_MAX_SOURCES,
+        "priority_domains": settings.priority_domains_list,
     }
+
+
+# ==============================================================================
+# АГЕНТСКИЙ СЦЕНАРИЙ (раздел 2.2 ТЗ prompt160926.md)
+# ==============================================================================
+class _HTMLTextExtractor(HTMLParser):
+    """Простой HTML-парсер: извлекает только видимый текст."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._chunks: list[str] = []
+        self._skip_depth = 0
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in ("script", "style", "noscript", "iframe"):
+            self._skip_depth += 1
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in ("script", "style", "noscript", "iframe") and self._skip_depth > 0:
+            self._skip_depth -= 1
+
+    def handle_data(self, data: str) -> None:
+        if self._skip_depth == 0:
+            text = data.strip()
+            if text:
+                self._chunks.append(text)
+
+    @property
+    def text(self) -> str:
+        return " ".join(self._chunks)
+
+
+def clean_html(html: str, max_chars: int | None = None) -> str:
+    """Удалить HTML-теги и вернуть чистый текст."""
+    if not html:
+        return ""
+    parser = _HTMLTextExtractor()
+    try:
+        parser.feed(html)
+    except Exception:  # noqa: BLE001
+        text = re.sub(r"<[^>]+>", " ", html)
+        text = re.sub(r"\s+", " ", text).strip()
+    else:
+        text = re.sub(r"\s+", " ", parser.text).strip()
+    if max_chars and len(text) > max_chars:
+        text = text[:max_chars].rsplit(" ", 1)[0] + "…"
+    return text
+
+
+def fetch_page_text(
+    url: str, timeout: int | None = None, max_chars: int | None = None
+) -> str:
+    """Загрузить страницу и вернуть очищенный текст."""
+    if not url:
+        return ""
+    try:
+        resp = requests.get(
+            url,
+            timeout=timeout or settings.WEB_FETCH_TIMEOUT_S,
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (compatible; ClickJuristBot/1.0; "
+                    "+https://clickjurist.ru)"
+                )
+            },
+        )
+        if resp.status_code >= 400:
+            return ""
+        encoding = resp.encoding or "utf-8"
+        html = resp.content.decode(encoding, errors="ignore")
+        return clean_html(html, max_chars=max_chars or settings.WEB_FETCH_MAX_CHARS)
+    except requests.RequestException as exc:
+        logger.warning("Не удалось загрузить %s: %s", url, exc)
+        return ""
+
+
+def is_priority_domain(url: str) -> bool:
+    """True, если URL принадлежит приоритетному домену (раздел 2.2 ТЗ)."""
+    if not url:
+        return False
+    try:
+        host = urlparse(url).netloc.lower()
+    except ValueError:
+        return False
+    return any(host.endswith(d) for d in settings.priority_domains_list)
+
+
+def prioritize_sources(sources: list[Source]) -> list[Source]:
+    """Пересортировать источники: сначала приоритетные домены."""
+    priority = [s for s in sources if is_priority_domain(s.url)]
+    other = [s for s in sources if not is_priority_domain(s.url)]
+    return priority + other
+
+
+def generate_search_queries(
+    anonymized_summary: str, max_queries: int = 3
+) -> list[str]:
+    """Сгенерировать поисковые запросы на основе обезличенного резюме."""
+    if not anonymized_summary or not anonymized_summary.strip():
+        return []
+    base = anonymized_summary.strip()[:200].rstrip(".,;:")
+    queries: list[str] = []
+    queries.append(f"{base} закон РФ")
+    queries.append(f"{base} судебная практика")
+    if len(queries) < max_queries:
+        queries.append(f"{base} статья ГК РФ")
+    return queries[:max_queries]
+
+
+def agent_search(
+    anonymized_summary: str, max_sources: int = 3
+) -> list[Source]:
+    """Агентский сценарий веб-фактчекинга (раздел 2.2 ТЗ)."""
+    if not settings.ENABLE_WEB_SEARCH or settings.WEB_SEARCH_PROVIDER == "none":
+        return []
+    queries = generate_search_queries(anonymized_summary)
+    if not queries:
+        return []
+    all_sources: list[Source] = []
+    for query in queries:
+        try:
+            results = search(query, min_sources=1, max_sources=max_sources)
+            all_sources.extend(results)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("agent_search: ошибка для запроса %r: %s", query, exc)
+    prioritized = prioritize_sources(all_sources)
+    return _deduplicate(prioritized, max_sources)
+
+
+def fetch_and_summarize(
+    sources: list[Source], max_chars_per_source: int | None = None
+) -> list[dict[str, Any]]:
+    """Загрузить и очистить текст каждого источника (для промпта Stage 2)."""
+    result: list[dict[str, Any]] = []
+    for source in sources:
+        text = fetch_page_text(
+            source.url,
+            max_chars=max_chars_per_source or settings.WEB_FETCH_MAX_CHARS,
+        )
+        result.append({
+            "title": source.title,
+            "url": source.url,
+            "text": text,
+            "domain": source.domain,
+            "is_priority": is_priority_domain(source.url),
+        })
+    return result

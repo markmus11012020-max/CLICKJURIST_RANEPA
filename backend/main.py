@@ -2,15 +2,19 @@
 
 Архитектура (см. ``prompt.150926.md``):
 
-    Клиент → POST /api/query
+    Клиент → POST /api/query (async, 202 Accepted + task_id)
               │
-              ├─ 0. Платёжный барьер: первый запрос бесплатный, далее 402 + Robokassa
+              ├─ 0. JWT-авторизация (HttpOnly cookie) + платёжный барьер
               ├─ 1. STAGE 1 (контур РФ):  YandexGPT / Ollama / regex → маскировка ПДн
-              ├─ 2. Web-фактчекинг:       2–3 независимых источника (Yandex/Serper/Tavily)
+              ├─ 2. Web-фактчекинг (агент): 2–3 источника, приоритет consultant.ru/garant.ru
               ├─ 3. STAGE 2 (внешний):    Gemini 2.5 Flash через AITunnel + failover
-              ─ 4. LLM-1 (черновик) → LLM-2 (Senior-асессор) → эталон клиенту
-                           │
-                           └─ Zero-Storage Logging: только session_id и метрики
+              ├─ 4. LLM-1 (черновик) → LLM-2 (Senior-асессор) → Guardrails → эталон
+              │
+              └─ Zero-Storage Logging: только session_id и метрики
+
+Клиент опрашивает статус задачи:
+    GET /api/query/status/{task_id}     — polling
+    GET /api/query/stream/{task_id}     — SSE-стриминг событий
 
 Запуск локально:
     python -m backend.main
@@ -20,27 +24,39 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import time
+from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import (
+    FileResponse,
+    JSONResponse,
+    Response,
+    StreamingResponse,
+)
 from fastapi.staticfiles import StaticFiles
 
+from backend import jwt_auth, task_store
 from backend.config import PROJECT_ROOT, settings
 from backend.db import store
 from backend.logging_setup import setup_logging
 from backend.models import (
+    AsyncTaskResponse,
+    AsyncTaskStatusResponse,
     ChecklistRequest,
     ChecklistResponse,
     DocumentRequest,
     DocumentResponse,
     GenerateResponse,
     HealthResponse,
+    PackageRequest,
+    PackageResponse,
     PaymentCreateRequest,
     PaymentCreateResponse,
     PaymentRequiredResponse,
@@ -49,7 +65,7 @@ from backend.models import (
 )
 from backend.security import session_context
 from backend.services import llm_chain, pdf_generator, robokassa
-from backend.services.prompts import AI_DISCLAIMER
+from backend.services.prompts import AI_DISCLAIMER, with_dynamic_disclaimer
 
 # --- Инициализация окружения --------------------------------------------------
 logger = setup_logging()
@@ -71,10 +87,10 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
-    allow_credentials=False,
+    allow_credentials=True,  # для JWT-cookie (раздел 3.1 ТЗ)
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
-    expose_headers=["X-Session-Id"],
+    expose_headers=["X-Session-Id", "X-Task-Id"],
 )
 
 
@@ -197,6 +213,124 @@ async def api_query(payload: QueryRequest, request: Request) -> Response:
     response = JSONResponse(content=body.model_dump())
     response.headers["X-Session-Id"] = session_id
     return response
+
+
+# ------------------------------------------------------------------------------
+# АСИНХРОННАЯ ГЕНЕРАЦИЯ (раздел 2.1 ТЗ prompt160926.md)
+# ------------------------------------------------------------------------------
+def _run_pipeline_task(record: task_store.TaskRecord, query: str) -> dict:
+    """Обёртка пайплайна для фонового потока с прогрессом и guardrails."""
+    from backend.services import guardrails
+
+    store_obj = task_store.get_task_store()
+    store_obj.update(record.task_id, stage="masking", progress=15)
+    record.push_event({"type": "progress", "stage": "masking", "progress": 15})
+
+    result = llm_chain.run_pipeline(query, with_stage2=True)
+
+    store_obj.update(record.task_id, stage="guardrails", progress=85)
+    record.push_event({"type": "progress", "stage": "guardrails", "progress": 85})
+
+    # Guardrails: проверка эталонного ответа (раздел 5.2 ТЗ).
+    guard_report = guardrails.validate_consultation(
+        result.final or "",
+        masked_query=result.mask.masked_query if result.mask else "",
+    )
+    record.push_event({
+        "type": "guardrails",
+        "passed": guard_report.passed,
+        "summary": guard_report.summary(),
+    })
+
+    if result.error:
+        return {
+            "error": result.error,
+            "warning": result.warning,
+            "stage1_provider": result.stage1_provider,
+            "stage2_provider": result.stage2_provider,
+        }
+
+    return {
+        "response": llm_chain.attach_disclaimer(result.final),
+        "sources": result.sources,
+        "citation_verified": result.citation_verified,
+        "anonymized": result.anonymized,
+        "stage1_provider": result.stage1_provider,
+        "stage2_provider": result.stage2_provider,
+        "warning": result.warning,
+        "guardrails_passed": guard_report.passed,
+    }
+
+
+@app.post("/api/query/async", response_model=AsyncTaskResponse, status_code=202)
+async def api_query_async(payload: QueryRequest, request: Request) -> Response:
+    """Поставить задачу генерации в фоновую очередь (раздел 2.1 ТЗ).
+
+    Возвращает ``202 Accepted`` с ``task_id``. Клиент опрашивает статус через
+    ``GET /api/query/status/{task_id}`` или подписывается на события через
+    ``GET /api/query/stream/{task_id}`` (SSE).
+    """
+    session_hash, session_id, was_free, denial = _session_gate(request, "consultation")
+    if denial is not None:
+        return denial
+    if was_free:
+        store.consume_free_request(session_hash)
+    store.register_request(session_hash, was_free)
+
+    record = task_store.submit_task(_run_pipeline_task, payload.query)
+    store.log_request(
+        session_hash, "consultation_async", 202, was_free, "background"
+    )
+
+    body = AsyncTaskResponse(
+        task_id=record.task_id,
+        status=record.status.value,
+        message="Задача принята в обработку. Опросите /api/query/status/{task_id}",
+    )
+    response = JSONResponse(status_code=202, content=body.model_dump())
+    response.headers["X-Task-Id"] = record.task_id
+    response.headers["X-Session-Id"] = session_id
+    return response
+
+
+@app.get("/api/query/status/{task_id}", response_model=AsyncTaskStatusResponse)
+async def api_query_status(task_id: str) -> Response:
+    """Опросить статус фоновой задачи (polling)."""
+    status = task_store.get_task_status(task_id)
+    if not status:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "Задача не найдена или истёк срок хранения"},
+        )
+    return JSONResponse(content=status)
+
+
+@app.get("/api/query/stream/{task_id}")
+async def api_query_stream(task_id: str) -> Response:
+    """SSE-стриминг событий фоновой задачи (раздел 2.1 ТЗ).
+
+    Формат: ``data: {json}\\n\\n``. Соединение закрывается после завершения задачи.
+    """
+    status = task_store.get_task_status(task_id)
+    if not status:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "Задача не найдена или истёк срок хранения"},
+        )
+
+    def event_stream():
+        for event in task_store.stream_task_events(task_id):
+            yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
 
 
 # ------------------------------------------------------------------------------
@@ -356,6 +490,130 @@ async def api_payment_create(
     session_hash, _, _, _ = session_context(request)
     store.ensure_session(session_hash)
     return PaymentCreateResponse(**robokassa.create_invoice(payload.service, session_hash))  # type: ignore[arg-type]
+
+
+# ------------------------------------------------------------------------------
+# ПАКЕТНЫЙ ТАРИФ «РЕШЕНИЕ ПРОБЛЕМЫ ПОД КЛЮЧ» (раздел 6 ТЗ prompt160926.md)
+# ------------------------------------------------------------------------------
+@app.post("/api/package", response_model=PackageResponse)
+async def api_package(payload: PackageRequest, request: Request) -> Response:
+    """Пакетная генерация: консультация + чек-лист + документ (раздел 6 ТЗ).
+
+    Тариф:
+        * ``basic`` (390 ₽) — консультация + чек-лист;
+        * ``premium`` (490 ₽) — консультация + чек-лист + шаблон документа.
+
+    Доступ ТОЛЬКО после оплаты (проверяется через ``_session_gate``).
+    """
+    service_code = "package_basic" if payload.tier == "basic" else "package_premium"
+    session_hash, session_id, was_free, denial = _session_gate(request, service_code)  # type: ignore[arg-type]
+    if denial is not None:
+        return denial
+    if was_free:
+        store.consume_free_request(session_hash)
+    store.register_request(session_hash, was_free)
+
+    amount = settings.PRICE_PACKAGE_BASIC if payload.tier == "basic" else settings.PRICE_PACKAGE_PREMIUM
+    body = PackageResponse(tier=payload.tier, amount=amount)
+
+    try:
+        from backend.services.pii_masker import mask_query
+
+        mask = mask_query(payload.query)
+        result = llm_chain.run_pipeline(payload.query, with_stage2=True)
+        if result.error:
+            body.error = result.error
+            body.warning = result.warning
+            store.log_request(session_hash, service_code, 502, was_free)
+            return JSONResponse(status_code=502, content=body.model_dump())
+
+        body.consultation = with_dynamic_disclaimer(
+            llm_chain.attach_disclaimer(result.final)
+        )
+        body.sources = result.sources  # type: ignore[assignment]
+
+        # Чек-лист (всегда).
+        try:
+            checklist = llm_chain.draft_checklist(mask.masked_query, result.final or "")
+            body.checklist = with_dynamic_disclaimer(
+                llm_chain.attach_disclaimer(checklist)
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Пакет: чек-лист не сгенерирован: %s", exc)
+            body.warning = (body.warning or "") + f" Чек-лист: {exc}"
+
+        # Документ (только premium).
+        if payload.tier == "premium":
+            try:
+                document = llm_chain.draft_document(mask.masked_query, "lawsuit")
+                body.document = with_dynamic_disclaimer(
+                    llm_chain.attach_disclaimer(document)
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Пакет: документ не сгенерирован: %s", exc)
+                body.warning = (body.warning or "") + f" Документ: {exc}"
+
+        store.log_request(session_hash, service_code, 200, was_free)
+        response = JSONResponse(content=body.model_dump())
+        response.headers["X-Session-Id"] = session_id
+        return response
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Пакетная генерация упала")
+        body.error = f"{type(exc).__name__}: {exc}"
+        store.log_request(session_hash, service_code, 500, was_free)
+        return JSONResponse(status_code=500, content=body.model_dump())
+
+
+# ------------------------------------------------------------------------------
+# JWT-АВТОРИЗАЦИЯ (раздел 3.1 ТЗ prompt160926.md)
+# ------------------------------------------------------------------------------
+@app.post("/api/auth/login")
+async def api_auth_login(request: Request) -> Response:
+    """Создать новую JWT-сессию и вернуть cookie.
+
+    Не требует пароля: идентификатор сессии привязан к отпечатку браузера
+    (заголовок ``X-Client-Fingerprint``). Это позволяет сохранять сессию
+    при смене IP (Wi-Fi → LTE), но защищает от перехвата cookie.
+    """
+    fingerprint = jwt_auth.get_fingerprint_from_request(request)
+    token, session_uuid, expires = jwt_auth.create_session_token(
+        fingerprint=fingerprint,
+    )
+    store.ensure_session(session_uuid)
+
+    response = JSONResponse(
+        content={
+            "session_uuid": session_uuid,
+            "expires_at": expires.isoformat(),
+            "message": "JWT-сессия создана",
+        }
+    )
+    jwt_auth.set_session_cookie(response, token, expires)
+    return response
+
+
+@app.post("/api/auth/logout")
+async def api_auth_logout() -> Response:
+    """Удалить JWT-cookie (logout)."""
+    response = JSONResponse(content={"message": "JWT-сессия завершена"})
+    jwt_auth.clear_session_cookie(response)
+    return response
+
+
+@app.get("/api/auth/status")
+async def api_auth_status(request: Request) -> dict[str, Any]:
+    """Проверить валидность текущей JWT-сессии."""
+    session_uuid, session_id = jwt_auth.get_session_from_request(request)
+    token = request.cookies.get(settings.JWT_COOKIE_NAME, "")
+    payload = jwt_auth.decode_session_token(token)
+    return {
+        "session_uuid": session_uuid,
+        "session_id": session_id,
+        "authenticated": payload is not None,
+        "expires_at": (
+            payload.get("exp") if payload else None
+        ),
+    }
 
 
 @app.get("/api/payment/result")

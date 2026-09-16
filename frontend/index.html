@@ -64,6 +64,12 @@
       <header class="card-head"><h2>Шаг 1. Юридическая консультация</h2><span class="badge" id="priceConsult">— ₽</span></header>
       <p class="card-sub">Опишите ситуацию простыми словами. ИИ проведёт правовой анализ и проверит актуальные нормы.</p>
       <label class="field"><span>Ваша ситуация</span><textarea id="queryInput" rows="6" placeholder="Например: соседи залили квартиру, управляющая компания отказывается возмещать ущерб."></textarea></label>
+      <div class="quick-tags" id="quickTags" aria-label="Быстрые пресеты">
+        <button type="button" class="quick-tag" data-tag="neighbors_flood">Затопили соседи сверху</button>
+        <button type="button" class="quick-tag" data-tag="refund_denied">Продавец отказывается вернуть деньги за товар</button>
+        <button type="button" class="quick-tag" data-tag="gibdd_fine">Оспаривание штрафа ГИБДД</button>
+        <button type="button" class="quick-tag" data-tag="salary_delay">Задержка зарплаты работодателем</button>
+      </div>
       <div class="actions"><button class="btn primary" id="runQueryBtn">Получить консультацию</button><span class="status" id="queryStatus"></span></div>
       <article class="result" id="queryResult" hidden>
         <h3>Ответ сервиса</h3>
@@ -98,8 +104,14 @@
     <section id="legal" class="card">
       <h2>О сервисе</h2>
       <p id="legalPrivacy"></p>
-      <p id="legalMasking"></p>
-      <p class="disclaimer" id="legalDisclaimer"></p>
+      <details class="legal-accordion">
+        <summary>Как мы защищаем ваши персональные данные (152-ФЗ)</summary>
+        <div id="legalMasking"></div>
+      </details>
+      <details class="legal-accordion">
+        <summary>Юридический дисклеймер</summary>
+        <p class="disclaimer" id="legalDisclaimer"></p>
+      </details>
     </section>
     <aside class="paywall" id="paywall" hidden>
       <div class="paywall-card">

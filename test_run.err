@@ -1,0 +1,8 @@
+{"timestamp": "2026-09-16T15:41:23", "level": "INFO", "service": "clickjurist", "logger": "clickjurist", "message": "Система логирования инициализирована (Zero-Storage режим)"}
+INFO:     Started server process [9920]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8766 (Press CTRL+C to quit)
+{"timestamp": "2026-09-16T15:42:07", "level": "INFO", "service": "clickjurist", "logger": "clickjurist", "message": "Запрос обработан", "endpoint": "/", "status_code": 200, "latency_ms": 57}
+{"timestamp": "2026-09-16T15:42:07", "level": "INFO", "service": "clickjurist", "logger": "clickjurist", "message": "Запрос обработан", "endpoint": "/api/legal", "status_code": 200, "latency_ms": 3}
+{"timestamp": "2026-09-16T15:42:07", "level": "INFO", "service": "clickjurist", "logger": "clickjurist", "message": "Запрос обработан", "endpoint": "/api/session", "status_code": 200, "latency_ms": 12}

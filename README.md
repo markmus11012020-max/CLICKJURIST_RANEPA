@@ -3,7 +3,7 @@
 Юридический ИИ-сервис: двухэтапный мегапайплайн (LLM-1 → LLM-2) с анонимностью данных
 (маскировка ПДн в изолированном контуре РФ), веб-фактчекингом и оплатой через Робокассу.
 
-Полное ТЗ: [prompt.150926.md](prompt.150926.md) · [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+Полное ТЗ: [prompt.150926.md](prompt.150926.md) · [prompt160926.md](prompt160926.md) · [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
 ## Архитектура за 30 секунд
 
@@ -154,6 +154,20 @@ pytest -q
 - [docs/ROADMAP.md](docs/ROADMAP.md) — план развития.
 - [deploy/yandex-cloud/README.md](deploy/yandex-cloud/README.md) — production-развёртывание.
 - [docs/AITUNNEL_API_RULES.md](docs/AITUNNEL_API_RULES.md) — правила работы с AITunnel API.
+
+## Production-ready доработки (prompt160926.md)
+
+| Раздел ТЗ | Реализация |
+|-----------|------------|
+| **2.1 Асинхронная генерация** | `POST /api/query/async` → `202 Accepted` + `task_id`. Polling через `GET /api/query/status/{task_id}`. SSE-стриминг через `GET /api/query/stream/{task_id}`. Бэкенд: `backend/task_store.py` (in-memory) + опционально Celery + Redis (`TASK_BACKEND=celery`). |
+| **2.2 Агентский веб-фактчекинг** | `backend/services/web_factcheck.py`: `agent_search()` генерирует 2–3 запроса из обезличенного резюме, парсит топ-3 результатов, очищает HTML, приоритизирует домены `consultant.ru`, `garant.ru`, `pravo.gov.ru`. |
+| **3.1 JWT-авторизация** | `backend/jwt_auth.py`: токен в `HttpOnly, Secure, SameSite=Strict` cookie. Сессия НЕ привязана к IP — переключение Wi-Fi ↔ LTE не рвёт сессию. Эндпоинты: `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/status`. |
+| **3.2 Улучшение маскировки ПДн** | Расширенные regex-паттерны в `backend/services/pii_masker.py` (организации, ФИО с инициалами, банковские реквизиты). Двухслойная защита: LLM + regex-страховка. |
+| **4.1 Быстрые пресеты** | `frontend/index.html`: блок `.quick-tags` под формой ввода. 4 пресета: «Затопили соседи сверху», «Продавец отказывается вернуть деньги», «Оспаривание штрафа ГИБДД», «Задержка зарплаты». Клик подставляет структурированный мини-шаблон. |
+| **4.2 Адаптивность и аккордеоны** | `frontend/style.css`: media-запросы для `<480px` (уменьшенные шрифты, компактные отступы). Подвал: `<details>`-аккордеоны для блоков 152-ФЗ и дисклеймера. |
+| **5.1 Динамические оговорки** | `backend/services/prompts.py::with_dynamic_disclaimer()` — добавляет оговорку о сроках исковой давности (ст. 181, 196 ГК РФ, ст. 392 ТК РФ). |
+| **5.2 Guardrails** | `backend/services/guardrails.py`: проверка диапазонов статей кодексов, запрет выдуманных цифр/номеров дел, контроль сохранности плейсхолдеров. При критических нарушениях — авто-регенерация. |
+| **6.1 Пакетный тариф** | `POST /api/package` — тариф «Решение проблемы под ключ»: `basic` (390 ₽) = консультация + чек-лист; `premium` (490 ₽) = + шаблон документа. |
 
 ## Лицензия
 

@@ -31,13 +31,48 @@
   };
 
   async function api(method, path, body) {
-    const init = { method, headers: { ...headers } };
+    const init = { method, headers: { ...headers }, credentials: "include" };
     if (body !== undefined) init.body = JSON.stringify(body);
     const resp = await fetch(API_BASE + path, init);
     let data = null;
     const text = await resp.text();
     try { data = text ? JSON.parse(text) : null; } catch (_) { data = { raw: text }; }
     return { status: resp.status, ok: resp.ok, data, headers: resp.headers };
+  }
+
+  /** Шаблоны быстрых пресетов (раздел 4.1 ТЗ prompt160926.md). */
+  const QUICK_TAG_TEMPLATES = {
+    neighbors_flood:
+      "Затопили соседи сверху. Квартира на 5 этаже, залит потолок в гостиной и спальне, " +
+      "повреждена мебель и техника. Управляющая компания отказывается возмещать ущерб, " +
+      "ссылаясь на то, что виноваты соседи. Хочу взыскать ущерб с соседей и зафиксировать " +
+      "факт затопления для суда.",
+    refund_denied:
+      "Купил смартфон в магазине за 75 000 ₽. Через 10 дней обнаружил заводской брак — " +
+      "не работает камера. Продавец отказывается вернуть деньги, предлагает только ремонт. " +
+      "Хочу вернуть уплаченную сумму и компенсацию.",
+    gibdd_fine:
+      "Получил штраф ГИБДД за превышение скорости 22.09.2026 на 40 ₽. Считаю штраф " +
+      "незаконным: в момент фиксации нарушения автомобилем управлял не я, а мой коллега " +
+      "по доверенности. Хочу обжаловать постановление.",
+    salary_delay:
+      "Работодатель ООО «[ORG_1]» задерживает заработную плату 3 месяца. Трудовой договор " +
+      "оформлен официально, зарплата 80 000 ₽ в месяц. Хочу взыскать задолженность и " +
+      "компенсацию по ст. 236 ТК РФ.",
+  };
+
+  /** Подставить шаблон пресета в поле ввода. */
+  function applyQuickTag(tagKey) {
+    const template = QUICK_TAG_TEMPLATES[tagKey];
+    if (!template) return;
+    const input = $("queryInput");
+    if (input) {
+      input.value = template;
+      input.focus();
+      // Прокрутить к форме.
+      const card = input.closest(".card");
+      if (card) card.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   }
 
   function $(id) { return document.getElementById(id); }
@@ -273,6 +308,79 @@
     }
   }
 
+  /** Асинхронная генерация через polling (раздел 2.1 ТЗ prompt160926.md). */
+  async function runQueryAsync() {
+    const query = ($("queryInput").value || "").trim();
+    if (query.length < 3) { toast("Опишите ситуацию подробнее", "error"); return; }
+    setStatus($("queryStatus"), "Ставим задачу в очередь…");
+    const btn = $("runQueryBtn"); btn.disabled = true;
+    try {
+      // 1. Поставить задачу в очередь.
+      const { status, data } = await api("POST", "/api/query/async", { query });
+      if (status === 202 && data && data.task_id) {
+        const taskId = data.task_id;
+        setStatus($("queryStatus"), "Генерация в фоне (этап 1/3)…");
+        // 2. Polling статуса каждые 2 секунды.
+        const poll = async () => {
+          const { status: s, data: d } = await api("GET", "/api/query/status/" + taskId);
+          if (!d) return false;
+          if (d.status === "completed") {
+            renderConsultationResult(query, d.result || {});
+            setStatus($("queryStatus"), "Готово ✓", "success");
+            toast("Консультация получена", "success");
+            loadSession();
+            return true;
+          }
+          if (d.status === "failed") {
+            setStatus($("queryStatus"), "Ошибка генерации", "error");
+            toast(d.error || "Не удалось получить ответ", "error");
+            return true;
+          }
+          // Обновить прогресс.
+          const stage = d.stage || "обработка";
+          const progress = d.progress || 0;
+          setStatus($("queryStatus"), `Генерация: ${stage} (${progress}%)…`);
+          return false;
+        };
+        // Цикл опроса (макс. 5 минут).
+        for (let i = 0; i < 150; i++) {
+          const done = await poll();
+          if (done) break;
+          await new Promise((r) => setTimeout(r, 2000));
+        }
+      } else if (status === 402 && data && data.payment_url) {
+        setStatus($("queryStatus"), "Требуется оплата", "error");
+        openPaywall(data.service || "consultation", data.amount, data.payment_url);
+      } else {
+        setStatus($("queryStatus"), "Ошибка", "error");
+        toast((data && (data.error || data.detail)) || "Не удалось поставить задачу", "error");
+      }
+    } catch (e) {
+      setStatus($("queryStatus"), "Сбой сети", "error");
+      toast("Сбой сети: " + e.message, "error");
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  /** Отобразить результат консультации (общая функция для sync/async). */
+  function renderConsultationResult(query, result) {
+    if (!result || !result.response) return;
+    state.lastQuery = query;
+    state.lastAnswer = result.response;
+    $("queryResultBody").innerHTML = markdownToHtml(result.response);
+    const list = $("querySourcesList");
+    list.innerHTML = "";
+    (result.sources || []).forEach((src) => {
+      const li = document.createElement("li");
+      const a = document.createElement("a");
+      a.href = src.url; a.textContent = src.title; a.target = "_blank"; a.rel = "noopener noreferrer";
+      li.appendChild(a); list.appendChild(li);
+    });
+    show($("querySources")); if (!(result.sources || []).length) hide($("querySources"));
+    show($("queryResult"));
+  }
+
   async function runChecklist() {
     if (!state.lastAnswer) { toast("Сначала получите консультацию", "error"); return; }
     setStatus($("checklistStatus"), "Готовлю чек-лист…");
@@ -387,6 +495,13 @@
       btn.addEventListener("click", () => {
         const value = btn.getAttribute("data-doc-type");
         if (value) setActiveDocType(value);
+      });
+    });
+    // Быстрые пресеты (раздел 4.1 ТЗ prompt160926.md).
+    document.querySelectorAll(".quick-tag").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const key = btn.getAttribute("data-tag");
+        if (key) applyQuickTag(key);
       });
     });
     // Активируем дефолтную кнопку при загрузке (complaint — первая слева).
