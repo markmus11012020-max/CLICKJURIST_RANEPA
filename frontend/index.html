@@ -96,13 +96,25 @@
         <div class="result-actions"><button class="btn secondary" id="toChecklistBtn">Составить чек-лист действий →</button></div>
       </article>
     </section>
-    <section id="checklist" class="card step-locked" data-step="2">
+    <section id="checklist" class="card" data-step="2">
       <header class="card-head"><h2>Шаг 2. Чек-лист действий</h2><span class="badge" id="priceChecklist">— ₽</span></header>
       <p class="card-sub">На основе консультации — пошаговый план: что, куда и в какие сроки.</p>
-      <div class="actions"><button class="btn primary" id="runChecklistBtn" disabled>Составить чек-лист</button><span class="status" id="checklistStatus"></span></div>
-      <article class="result" id="checklistResult" hidden><h3>Чек-лист</h3><div class="result-body" id="checklistResultBody"></div></article>
+      <div class="actions"><button class="btn primary" id="runChecklistBtn">Составить чек-лист</button><span class="status" id="checklistStatus"></span></div>
+      <article class="result" id="checklistResult" hidden>
+        <h3>Чек-лист</h3>
+        <div class="result-timer" id="checklistTimer" hidden><span class="spinner" aria-hidden="true"></span><span id="checklistTimerText">Готовлю чек-лист… Прошло 0 сек.</span></div>
+        <div class="skeleton-loader" id="checklistSkeleton" hidden>
+          <div class="skeleton-line skeleton-title"></div>
+          <div class="skeleton-line"></div>
+          <div class="skeleton-line"></div>
+          <div class="skeleton-line short"></div>
+          <div class="skeleton-line"></div>
+          <div class="skeleton-line short"></div>
+        </div>
+        <div class="result-body" id="checklistResultBody"></div>
+      </article>
     </section>
-    <section id="document" class="card step-locked" data-step="3">
+    <section id="document" class="card" data-step="3">
       <header class="card-head"><h2>Шаг 3. Шаблон документа</h2><span class="badge" id="priceDocument">— ₽</span></header>
       <p class="card-sub">Выберите тип документа: жалоба, досудебная претензия, исковое заявление или возражение для отмены судебного приказа.</p>
       <div class="field"><span>Тип документа</span>
@@ -113,9 +125,19 @@
           <button type="button" class="btn ghost doc-type-btn" data-doc-type="court_order_cancellation" aria-pressed="false">Отмена судебного приказа</button>
         </div>
       </div>
-      <div class="actions"><button class="btn primary" id="runDocumentBtn" disabled>Сгенерировать документ</button><span class="status" id="documentStatus"></span></div>
+      <div class="actions"><button class="btn primary" id="runDocumentBtn">Сгенерировать документ</button><span class="status" id="documentStatus"></span></div>
       <article class="result" id="documentResult" hidden>
-        <h3>Документ</h3><div class="result-body" id="documentResultBody"></div>
+        <h3>Документ</h3>
+        <div class="result-timer" id="documentTimer" hidden><span class="spinner" aria-hidden="true"></span><span id="documentTimerText">Формирую документ… Прошло 0 сек.</span></div>
+        <div class="skeleton-loader" id="documentSkeleton" hidden>
+          <div class="skeleton-line skeleton-title"></div>
+          <div class="skeleton-line"></div>
+          <div class="skeleton-line"></div>
+          <div class="skeleton-line short"></div>
+          <div class="skeleton-line"></div>
+          <div class="skeleton-line short"></div>
+        </div>
+        <div class="result-body" id="documentResultBody"></div>
         <div class="result-actions"><button class="btn secondary" id="runPdfBtn">Скачать PDF-версию</button></div>
       </article>
       <p class="step-disclaimer">Внимание: документ формируется автоматизированной ИИ-системой. Перед подачей в государственные органы и суды рекомендуется финальная проверка практикующим специалистом.</p>
@@ -123,17 +145,6 @@
     <section id="legal" class="card">
       <h2>О сервисе</h2>
       <p id="legalPrivacy"></p>
-      <details class="legal-accordion">
-        <summary>Как мы защищаем ваши персональные данные (152-ФЗ)</summary>
-        <div id="legalMasking">
-          <h4>Режим Zero-Storage</h4>
-          <p>ClickJurist работает в режиме <strong>Zero-Storage</strong> (No-Data-Retention): тексты ваших обращений, фамилии, адреса, телефоны и иные персональные данные <strong>не сохраняются</strong> на серверах. В базе данных хранятся только псевдонимизированный идентификатор сессии (SHA-256 от IP + отпечатка браузера + соли) и технические метрики — без какой-либо возможности восстановить исходные данные.</p>
-          <h4>Локальный контур Stage 1 (маскировка ПДн)</h4>
-          <p>До передачи запроса во внешнюю аналитическую модель (Gemini 2.5 Flash) ваш текст проходит через <strong>изолированный российский контур маскировки</strong>: имена заменяются на <code>[NAME_1]</code>, адреса — на <code>[ADDRESS_1]</code>, телефоны — на <code>[PHONE_1]</code>, названия организаций — на <code>[ORG_1]</code>. Двухслойная защита: LYM (YandexGPT/Ollama) + обязательная regex-страховка. Ни один фрагмент ПДн не покидает пределы РФ.</p>
-          <h4>Защита сессий через JWT</h4>
-          <p>Идентификация сессии реализована через <strong>JWT-токен в HttpOnly, Secure, SameSite=Strict cookie</strong>. JavaScript не может прочитать такой токен (защита от XSS), cookie не отправляется на сторонние сайты (защита от CSRF). Сессия не привязана к IP-адресу — переключение Wi-Fi ↔ LTE не разрывает авторизацию. Дополнительно токен привязан к хешу отпечатка браузера: даже при перехвате cookie злоумышленник не сможет ей воспользоваться без оригинального браузера.</p>
-        </div>
-      </details>
       <details class="legal-accordion">
         <summary>Юридический дисклеймер</summary>
         <p class="disclaimer" id="legalDisclaimer"></p>

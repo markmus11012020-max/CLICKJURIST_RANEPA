@@ -288,7 +288,6 @@
     setStatus($("queryStatus"), "Ставим задачу в очередь…");
     const btn = $("runQueryBtn"); btn.disabled = true;
     state.lastQuery = query; state.lastAnswer = "";
-    lockDependentSteps();
     showSkeletonAndTimer();
     try {
       const { status, data } = await api("POST", "/api/query/async", { query });
@@ -321,7 +320,6 @@
    */
   function streamConsultation(taskId, query) {
     return new Promise((resolve) => {
-      let accumulated = "";
       let sources = [];
       let stage2Provider = "";
       let stage1Provider = "";
@@ -338,6 +336,21 @@
         }, 1000);
       }
       const stopTimer = () => { if (timerHandle) { clearInterval(timerHandle); timerHandle = null; } };
+
+      /** Прокрутить контейнер результата к самой свежей строке (typewriter-эффект). */
+      const scrollToBottom = () => {
+        const body = $("queryResultBody");
+        if (body && typeof body.scrollHeight === "number") {
+          // scrollIntoView на последнем дочернем узле даёт плавную прокрутку
+          // именно к свежему тексту, а не к произвольной точке контейнера.
+          const last = body.lastChild;
+          if (last && typeof last.scrollIntoView === "function") {
+            last.scrollIntoView({ block: "end", inline: "nearest" });
+          } else {
+            body.scrollTop = body.scrollHeight;
+          }
+        }
+      };
 
       let es;
       try {
@@ -359,9 +372,15 @@
         if (payload.type === "started" || payload.type === "progress") return;
 
         if (payload.type === "token") {
-          accumulated += (payload.text || "");
+          // Немедленный рендеринг: каждый токен дописывается прямо в DOM
+          // без буферизации/накопления — пользователь видит «печатную машинку».
+          const chunk = payload.text || "";
+          if (!chunk) return;
           const body = $("queryResultBody");
-          if (body) body.textContent = accumulated;
+          if (body) {
+            body.appendChild(document.createTextNode(chunk));
+            scrollToBottom();
+          }
           const sk = $("querySkeleton");
           if (sk && !sk.hidden) sk.hidden = true;
           return;
@@ -375,7 +394,7 @@
         }
         if (payload.type === "completed") {
           stopTimer(); es.close();
-          const finalText = (payload.result && payload.result.response) || accumulated;
+          const finalText = (payload.result && payload.result.response) || ($("queryResultBody") ? $("queryResultBody").textContent : "");
           state.lastAnswer = finalText;
           const body = $("queryResultBody");
           if (body) body.innerHTML = markdownToHtml(finalText);
@@ -394,7 +413,6 @@
           show($("queryResult"));
           setStatus($("queryStatus"), "Готово ✓", "success");
           toast("Консультация получена", "success");
-          unlockDependentSteps();
           loadSession();
           if (typeof console !== "undefined" && console.debug) {
             console.debug("[clickjurist] consultation", {
@@ -444,30 +462,137 @@
     const tm = $("queryTimer"); if (tm) tm.hidden = true;
   }
 
-  /** Заблокировать Шаги 2 и 3 (Шаг 3 ТЗ prompt170926.md). */
-  function lockDependentSteps() {
-    document.querySelectorAll(".card[data-step]").forEach((card) => {
-      card.classList.add("step-locked");
-      card.classList.remove("step-unlocked");
-      card.querySelectorAll("button.btn").forEach((b) => { b.disabled = true; });
+  /**
+   * Универсальный SSE-стример для Шагов 2/3 (ТЗ prompt170926.md).
+   * Подписывается на /api/query/stream/{task_id} и рендерит токены
+   * в указанный контейнер по мере их поступления.
+   *
+   * @param {string} taskId — идентификатор фоновой задачи.
+   * @param {object} opts — параметры рендеринга:
+   *   - skeletonId, timerId, timerTextId, bodyId, resultId — DOM-id элементов;
+   *   - statusId — id элемента статуса;
+   *   - initialLabel — текст таймера до старта («Готовлю чек-лист…»);
+   *   - onCompleted(finalText) — колбэк финализации (markdown-рендер).
+   */
+  function streamGeneric(taskId, opts) {
+    return new Promise((resolve) => {
+      const {
+        skeletonId, timerId, timerTextId, bodyId, resultId,
+        statusId, initialLabel, onCompleted,
+      } = opts;
+
+      let timerHandle = null;
+      const startedAt = Date.now();
+
+      const timerEl = $(timerTextId);
+      if (timerEl) {
+        timerEl.textContent = initialLabel + " Прошло 0 сек.";
+        timerHandle = setInterval(() => {
+          const sec = Math.floor((Date.now() - startedAt) / 1000);
+          if (timerEl) timerEl.textContent = initialLabel + " Прошло " + sec + " сек.";
+        }, 1000);
+      }
+      const stopTimer = () => { if (timerHandle) { clearInterval(timerHandle); timerHandle = null; } };
+
+      const hideSkeleton = () => {
+        const sk = $(skeletonId); if (sk) sk.hidden = true;
+        const tm = $(timerId); if (tm) tm.hidden = true;
+      };
+
+      const scrollToBottom = () => {
+        const body = $(bodyId);
+        if (body && typeof body.scrollHeight === "number") {
+          const last = body.lastChild;
+          if (last && typeof last.scrollIntoView === "function") {
+            last.scrollIntoView({ block: "end", inline: "nearest" });
+          } else {
+            body.scrollTop = body.scrollHeight;
+          }
+        }
+      };
+
+      let es;
+      try {
+        es = new EventSource(API_BASE + "/api/query/stream/" + taskId);
+      } catch (e) {
+        stopTimer();
+        hideSkeleton();
+        if (statusId) setStatus($(statusId), "Сбой сети", "error");
+        toast("Не удалось открыть поток: " + e.message, "error");
+        resolve();
+        return;
+      }
+
+      es.onmessage = (ev) => {
+        let payload = null;
+        try { payload = JSON.parse(ev.data); } catch (_) { return; }
+        if (!payload || !payload.type) return;
+
+        if (payload.type === "started" || payload.type === "progress") return;
+
+        if (payload.type === "token") {
+          const chunk = payload.text || "";
+          if (!chunk) return;
+          const body = $(bodyId);
+          if (body) {
+            body.appendChild(document.createTextNode(chunk));
+            scrollToBottom();
+          }
+          const sk = $(skeletonId);
+          if (sk && !sk.hidden) sk.hidden = true;
+          return;
+        }
+
+        if (payload.type === "completed") {
+          stopTimer(); es.close();
+          const result = payload.result || {};
+          const finalText = result.checklist || result.document
+            || ($(bodyId) ? $(bodyId).textContent : "");
+          hideSkeleton();
+          show($(resultId));
+          if (typeof onCompleted === "function") {
+            try { onCompleted(finalText, result); } catch (_) {}
+          }
+          if (statusId) setStatus($(statusId), "Готово ✓", "success");
+          resolve();
+          return;
+        }
+        if (payload.type === "failed") {
+          stopTimer(); es.close();
+          hideSkeleton();
+          if (statusId) setStatus($(statusId), "Ошибка генерации", "error");
+          toast(payload.error || "Не удалось получить ответ", "error");
+          resolve();
+          return;
+        }
+        if (payload.type === "cancelled") {
+          stopTimer(); es.close();
+          hideSkeleton();
+          resolve();
+          return;
+        }
+      };
+
+      es.onerror = () => {
+        if (typeof console !== "undefined" && console.debug) {
+          console.debug("[clickjurist] SSE reconnecting…");
+        }
+      };
     });
   }
 
-  /** Разблокировать Шаги 2 и 3 после завершения Шага 1. */
-  function unlockDependentSteps() {
-    document.querySelectorAll(".card[data-step]").forEach((card) => {
-      card.classList.remove("step-locked");
-      card.classList.add("step-unlocked");
-      const stepNum = card.getAttribute("data-step");
-      if (stepNum === "2") {
-        const btn = card.querySelector("#runChecklistBtn");
-        if (btn) btn.disabled = false;
-      }
-      if (stepNum === "3") {
-        const btn = card.querySelector("#runDocumentBtn");
-        if (btn) btn.disabled = false;
-      }
-    });
+  /** Показать скелетон + таймер для произвольного шага (2 или 3). */
+  function showStepSkeletonAndTimer(step) {
+    const sk = $(step + "Skeleton"); if (sk) sk.hidden = false;
+    const tm = $(step + "Timer"); if (tm) tm.hidden = false;
+    const body = $(step + "ResultBody"); if (body) body.textContent = "";
+    show($(step + "Result"));
+  }
+
+  /** Скрыть скелетон + таймер для произвольного шага (2 или 3). */
+  function hideStepSkeletonAndTimer(step) {
+    const sk = $(step + "Skeleton"); if (sk) sk.hidden = true;
+    const tm = $(step + "Timer"); if (tm) tm.hidden = true;
   }
 
   /** Асинхронная генерация через polling (раздел 2.1 ТЗ prompt160926.md). */
@@ -545,25 +670,41 @@
 
   async function runChecklist() {
     if (!state.lastAnswer) { toast("Сначала получите консультацию", "error"); return; }
-    setStatus($("checklistStatus"), "Готовлю чек-лист…");
+    setStatus($("checklistStatus"), "Ставим задачу в очередь…");
     const btn = $("runChecklistBtn"); btn.disabled = true;
+    showStepSkeletonAndTimer("checklist");
     try {
-      const { status, data } = await api("POST", "/api/checklist", {
+      const { status, data } = await api("POST", "/api/checklist/async", {
         query: state.lastQuery, final_answer: state.lastAnswer,
       });
-      if (status === 200 && data && data.checklist) {
-        $("checklistResultBody").innerHTML = markdownToHtml(data.checklist);
-        show($("checklistResult"));
-        setStatus($("checklistStatus"), "Готово ✓", "success");
-        toast("Чек-лист готов", "success"); loadSession();
+      if (status === 202 && data && data.task_id) {
+        const taskId = data.task_id;
+        setStatus($("checklistStatus"), "Генерация в фоне…");
+        await streamGeneric(taskId, {
+          skeletonId: "checklistSkeleton",
+          timerId: "checklistTimer",
+          timerTextId: "checklistTimerText",
+          bodyId: "checklistResultBody",
+          resultId: "checklistResult",
+          statusId: "checklistStatus",
+          initialLabel: "Готовлю чек-лист…",
+          onCompleted: (finalText) => {
+            $("checklistResultBody").innerHTML = markdownToHtml(finalText);
+            toast("Чек-лист готов", "success");
+            loadSession();
+          },
+        });
       } else if (status === 402 && data && data.payment_url) {
+        hideStepSkeletonAndTimer("checklist");
         setStatus($("checklistStatus"), "Требуется оплата", "error");
         openPaywall(data.service || "checklist", data.amount, data.payment_url);
       } else {
+        hideStepSkeletonAndTimer("checklist");
         setStatus($("checklistStatus"), "Ошибка", "error");
         toast((data && (data.error || data.detail)) || "Не удалось построить чек-лист", "error");
       }
     } catch (e) {
+      hideStepSkeletonAndTimer("checklist");
       setStatus($("checklistStatus"), "Сбой сети", "error");
       toast("Сбой сети: " + e.message, "error");
     } finally {
@@ -584,23 +725,39 @@
     btn.classList.add("is-loading");
     btn.dataset.originalLabel = btn.dataset.originalLabel || btn.textContent;
     btn.innerHTML = '<span class="spinner" aria-hidden="true"></span>' + btn.dataset.originalLabel;
-    // 2. Солидный статус рядом с кнопкой.
-    setStatus($("documentStatus"), "Формирование правового документа…");
+    // 2. Солидный статус рядом с кнопкой + скелетон + таймер (Шаг 3 ТЗ prompt170926.md).
+    setStatus($("documentStatus"), "Ставим задачу в очередь…");
+    showStepSkeletonAndTimer("document");
     try {
-      const { status, data } = await api("POST", "/api/document", { query, doc_type: docType });
-      if (status === 200 && data && data.document) {
-        $("documentResultBody").innerHTML = markdownToHtml(data.document);
-        show($("documentResult"));
-        setStatus($("documentStatus"), "Готово ✓", "success");
-        toast("Документ сформирован", "success"); loadSession();
+      const { status, data } = await api("POST", "/api/document/async", { query, doc_type: docType });
+      if (status === 202 && data && data.task_id) {
+        const taskId = data.task_id;
+        setStatus($("documentStatus"), "Генерация в фоне…");
+        await streamGeneric(taskId, {
+          skeletonId: "documentSkeleton",
+          timerId: "documentTimer",
+          timerTextId: "documentTimerText",
+          bodyId: "documentResultBody",
+          resultId: "documentResult",
+          statusId: "documentStatus",
+          initialLabel: "Формирую документ…",
+          onCompleted: (finalText) => {
+            $("documentResultBody").innerHTML = markdownToHtml(finalText);
+            toast("Документ сформирован", "success");
+            loadSession();
+          },
+        });
       } else if (status === 402 && data && data.payment_url) {
+        hideStepSkeletonAndTimer("document");
         setStatus($("documentStatus"), "Требуется оплата", "error");
         openPaywall(data.service || "document", data.amount, data.payment_url);
       } else {
+        hideStepSkeletonAndTimer("document");
         setStatus($("documentStatus"), "Ошибка", "error");
         toast((data && (data.error || data.detail)) || "Не удалось сформировать документ", "error");
       }
     } catch (e) {
+      hideStepSkeletonAndTimer("document");
       setStatus($("documentStatus"), "Сбой сети", "error");
       toast("Сбой сети: " + e.message, "error");
     } finally {

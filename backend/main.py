@@ -423,6 +423,148 @@ async def api_document(payload: DocumentRequest, request: Request) -> Response:
     return response
 
 
+# ------------------------------------------------------------------------------
+# АСИНХРОННАЯ ГЕНЕРАЦИЯ ЧЕК-ЛИСТА И ДОКУМЕНТА (Шаги 2/3 ТЗ prompt170926.md)
+# ------------------------------------------------------------------------------
+def _run_checklist_task(
+    record: task_store.TaskRecord, query: str, final_answer: str
+) -> dict:
+    """Фоновая задача генерации чек-листа со стримингом токенов."""
+    store_obj = task_store.get_task_store()
+
+    def _on_event(event: dict) -> None:
+        record.push_event(event)
+        if event.get("type") == "progress":
+            store_obj.update(
+                record.task_id,
+                stage=event.get("stage", ""),
+                progress=event.get("progress", 0),
+            )
+
+    try:
+        from backend.services.pii_masker import mask_query
+
+        record.push_event({"type": "progress", "stage": "masking", "progress": 10})
+        mask = mask_query(query)
+        record.push_event({"type": "progress", "stage": "masking_done", "progress": 25})
+
+        record.push_event({"type": "progress", "stage": "drafting", "progress": 40})
+        text = llm_chain.draft_checklist(mask.masked_query, final_answer)
+        # Эмитим порциями по ~120 символов — эффект «живой печати».
+        chunk = 120
+        for i in range(0, len(text), chunk):
+            piece = text[i:i + chunk]
+            record.push_event({"type": "token", "text": piece})
+
+        record.push_event({"type": "progress", "stage": "done", "progress": 100})
+        final_text = llm_chain.attach_disclaimer(text)
+        return {"checklist": final_text}
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Фоновая задача чек-листа упала")
+        return {"error": f"{type(exc).__name__}: {exc}"}
+
+
+def _run_document_task(
+    record: task_store.TaskRecord, query: str, doc_type: str
+) -> dict:
+    """Фоновая задача генерации документа со стримингом токенов."""
+    store_obj = task_store.get_task_store()
+
+    def _on_event(event: dict) -> None:
+        record.push_event(event)
+        if event.get("type") == "progress":
+            store_obj.update(
+                record.task_id,
+                stage=event.get("stage", ""),
+                progress=event.get("progress", 0),
+            )
+
+    try:
+        from backend.services.pii_masker import mask_query
+
+        record.push_event({"type": "progress", "stage": "masking", "progress": 10})
+        mask = mask_query(query)
+        record.push_event({"type": "progress", "stage": "masking_done", "progress": 25})
+
+        record.push_event({"type": "progress", "stage": "drafting", "progress": 40})
+        text = llm_chain.draft_document(mask.masked_query, doc_type)
+        chunk = 120
+        for i in range(0, len(text), chunk):
+            piece = text[i:i + chunk]
+            record.push_event({"type": "token", "text": piece})
+
+        record.push_event({"type": "progress", "stage": "done", "progress": 100})
+        final_text = llm_chain.attach_disclaimer(text)
+        return {"document": final_text, "doc_type": doc_type}
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Фоновая задача документа упала")
+        return {"error": f"{type(exc).__name__}: {exc}"}
+
+
+@app.post("/api/checklist/async", response_model=AsyncTaskResponse, status_code=202)
+async def api_checklist_async(
+    payload: ChecklistRequest, request: Request
+) -> Response:
+    """Поставить генерацию чек-листа в фоновую очередь (Шаг 2 ТЗ prompt170926.md).
+
+    Возвращает ``202 Accepted`` с ``task_id``. Клиент подписывается на события
+    через ``GET /api/query/stream/{task_id}`` (SSE).
+    """
+    session_hash, session_id, was_free, denial = _session_gate(request, "checklist")
+    if denial is not None:
+        return denial
+    if was_free:
+        store.consume_free_request(session_hash)
+    store.register_request(session_hash, was_free)
+
+    record = task_store.submit_task(
+        _run_checklist_task, payload.query, payload.final_answer
+    )
+    store.log_request(session_hash, "checklist_async", 202, was_free, "background")
+
+    body = AsyncTaskResponse(
+        task_id=record.task_id,
+        status=record.status.value,
+        message="Задача чек-листа принята в обработку",
+    )
+    response = JSONResponse(status_code=202, content=body.model_dump())
+    response.headers["X-Task-Id"] = record.task_id
+    response.headers["X-Session-Id"] = session_id
+    return response
+
+
+@app.post("/api/document/async", response_model=AsyncTaskResponse, status_code=202)
+async def api_document_async(
+    payload: DocumentRequest, request: Request
+) -> Response:
+    """Поставить генерацию документа в фоновую очередь (Шаг 3 ТЗ prompt170926.md).
+
+    Возвращает ``202 Accepted`` с ``task_id``. Клиент подписывается на события
+    через ``GET /api/query/stream/{task_id}`` (SSE).
+    """
+    session_hash, session_id, was_free, denial = _session_gate(request, "document")
+    if denial is not None:
+        return denial
+    if was_free:
+        store.consume_free_request(session_hash)
+    store.register_request(session_hash, was_free)
+
+    record = task_store.submit_task(
+        _run_document_task, payload.query, payload.doc_type
+    )
+    store.log_request(session_hash, "document_async", 202, was_free, "background")
+
+    body = AsyncTaskResponse(
+        task_id=record.task_id,
+        status=record.status.value,
+        message="Задача документа принята в обработку",
+    )
+    response = JSONResponse(status_code=202, content=body.model_dump())
+    response.headers["X-Task-Id"] = record.task_id
+    response.headers["X-Session-Id"] = session_id
+    return response
+
+
 @app.post("/api/pdf")
 async def api_pdf(payload: ChecklistRequest, request: Request) -> Response:
     """PDF-версия консультации с поддержкой кириллицы (ReportLab).

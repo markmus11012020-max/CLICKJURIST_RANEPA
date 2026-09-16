@@ -1,61 +1,51 @@
 @chcp 65001 > nul
 @echo off
 REM ============================================================================
-REM  ClickJurist Production — автоматический деплой (start.bat)
-REM
-REM  Оркестрация запуска:
-REM    1. Остановка старых процессов
-REM    2. Очистка кэша Python (__pycache__, .pytest_cache)
-REM    3. Создание / активация виртуального окружения
-REM    4. Установка зависимостей
-REM    5. Старт сервера FastAPI (uvicorn, порт 8001)
-REM
-REM  Использование:
-REM    start.bat           — запустить сервер
-REM    start.bat --dry     — сборка окружения без запуска сервера
+REM  ClickJurist Production — Линейный запуск без багов с пробелами
 REM ============================================================================
 setlocal EnableDelayedExpansion
 
 cd /d "%~dp0"
 
-echo [1/5] Остановка старых процессов...
-for /f "tokens=5" %%a in ('netstat -aon ^| findstr :8001') do taskkill /f /pid %%a 2>nul
-REM Kill any uvicorn/python processes from previous run
-taskkill /f /im uvicorn.exe >nul 2>&1
+echo [1/5] Освобождение портов...
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr :8001') do taskkill /f /pid %%a >nul 2>&1
 echo     -> готово
 
 echo [2/5] Очистка кэша Python...
-for /d /r %%d in (__pycache__) do (
-    if exist "%%d" rmdir /s /q "%%d" 2>nul
-)
+for /d /r %%d in (__pycache__) do if exist "%%d" rmdir /s /q "%%d" 2>nul
 if exist ".pytest_cache" rmdir /s /q ".pytest_cache" 2>nul
 echo     -> готово
 
-echo [3/5] Создание виртуального окружения...
-if not exist "venv\Scripts\python.exe" (
-    "python" -m venv "venv"
-    if errorlevel 1 (
-        echo [ERROR] Не удалось создать виртуальное окружение
-        exit /b 1
-    )
-)
+echo [3/5] Проверка виртуального окружения...
+if exist "venv\Scripts\python.exe" goto :activate_env
+echo Создание нового виртуального окружения venv...
+"python" -m venv venv
+
+:activate_env
 echo     -> готово
 
-echo [4/5] Установка зависимостей...
+echo [4/5] Установка зависимостей (PyJWT, FastAPI)...
 call "%~dp0venv\Scripts\activate.bat"
-"%~dp0venv\Scripts\python.exe" -m pip install --upgrade pip --quiet
-if exist "backend\requirements.txt" (
-    "%~dp0venv\Scripts\python.exe" -m pip install -r "backend\requirements.txt" --quiet
+
+echo Обновление pip...
+python -m pip install --upgrade pip --quiet
+
+echo Синхронизация пакетов...
+python -m pip install -r "%~dp0backend\requirements.txt"
+if errorlevel 1 (
+    echo [ERROR] Ошибка при установке библиотек!
+    pause
+    exit /b 1
 )
 echo     -> готово
 
-if "%~1"=="--dry" (
-    echo [5/5] Сборка завершена (режим --dry, сервер не запущен).
-    exit /b 0
-)
+echo [5/5] Запуск сервера ClickJurist...
+echo     -> Локальный адрес: http://127.0.0.1:8001
+echo ----------------------------------------------------------------------
 
-echo [5/5] Запуск сервера...
-echo     -> http://localhost:8001  (API: http://localhost:8001/docs)
-echo     -> Ctrl+C чтобы остановить
-"%~dp0venv\Scripts\python.exe" -m uvicorn backend.main:app --host 0.0.0.0 --port 8001 --reload
+python -m uvicorn backend.main:app --host 127.0.0.1 --port 8001
+if errorlevel 1 (
+    echo [ERROR] Uvicorn завершил работу со сбоем.
+    pause
+)
 goto :eof
