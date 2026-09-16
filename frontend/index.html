@@ -4,34 +4,46 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="description" content="ClickJurist — юридический ИИ-сервис: двухэтапный мегапайплайн, маскировка ПДн в контуре РФ, веб-фактчекинг и оплата через Робокассу." />
-  <title>ClickJurist — юридический ИИ-сервис</title>
+  <title>КликЮрист — юридический ИИ-сервис</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/style.css" />
-  <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' stop-color='%23818cf8'/><stop offset='100%25' stop-color='%234f46e5'/></linearGradient></defs><path d='M32,4 L56,14 L56,32 C56,47 44,57 32,60 C20,57 8,47 8,32 L8,14 Z' fill='url(%23g)'/><g transform='translate(32 32)' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' fill='none'><line x1='0' y1='-15' x2='0' y2='14'/><line x1='-8' y1='14' x2='8' y2='14'/><line x1='-11' y1='-10' x2='11' y2='-10'/><path d='M-11,-10 L-14,-3 a3.5,3.5 0 0,0 6,0 z'/><path d='M11,-10 L8,-3 a3.5,3.5 0 0,0 6,0 z'/></g><circle cx='32' cy='17' r='1.5' fill='%23ffffff'/></svg>" />
+  <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' stop-color='%2300c6ff'/><stop offset='55%25' stop-color='%2300a8e8'/><stop offset='100%25' stop-color='%230077b6'/></linearGradient></defs><path d='M32,3.5 L57,13.5 L57,32 C57,47.5 45,57.5 32,60.5 C19,57.5 7,47.5 7,32 L7,13.5 Z' fill='url(%23g)' stroke='%23ffffff' stroke-opacity='.5' stroke-width='1'/><g stroke='%23ffffff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' fill='none'><line x1='32' y1='18.5' x2='32' y2='43'/><line x1='25' y1='44' x2='39' y2='44'/><line x1='20' y1='21' x2='44' y2='21'/><path d='M32,18.5 L32,21'/><path d='M20,21 L16.5,30 A3.5,3.5 0 0,0 23.5,30 Z'/><path d='M44,21 L40.5,30 A3.5,3.5 0 0,0 47.5,30 Z'/></g><circle cx='32' cy='16.5' r='1.8' fill='%23ffffff'/></svg>" />
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="#top" aria-label="ClickJurist — главная">
+    <a class="brand" href="#top" aria-label="КликЮрист — главная">
       <span class="brand-shield" aria-hidden="true">
         <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="cjShield" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#818cf8"/>
-              <stop offset="100%" stop-color="#4f46e5"/>
+              <stop offset="0%" stop-color="#00c6ff"/>
+              <stop offset="55%" stop-color="#00a8e8"/>
+              <stop offset="100%" stop-color="#0077b6"/>
+            </linearGradient>
+            <linearGradient id="cjInk" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#ffffff"/>
+              <stop offset="100%" stop-color="#d7f4ff"/>
             </linearGradient>
           </defs>
-          <path d="M32,4 L56,14 L56,32 C56,47 44,57 32,60 C20,57 8,47 8,32 L8,14 Z" fill="url(#cjShield)"/>
-          <g transform="translate(32 32)" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">
-            <line x1="0" y1="-15" x2="0" y2="14"/>
-            <line x1="-8" y1="14" x2="8" y2="14"/>
-            <line x1="-11" y1="-10" x2="11" y2="-10"/>
-            <path d="M-11,-10 L-14,-3 a3.5,3.5 0 0,0 6,0 z"/>
-            <path d="M11,-10 L8,-3 a3.5,3.5 0 0,0 6,0 z"/>
+          <!-- Геральдический щит: мягкий градиент + тонкий светлый контур -->
+          <path d="M32,3.5 L57,13.5 L57,32 C57,47.5 45,57.5 32,60.5 C19,57.5 7,47.5 7,32 L7,13.5 Z" fill="url(#cjShield)"/>
+          <path d="M32,3.5 L57,13.5 L57,32 C57,47.5 45,57.5 32,60.5 C19,57.5 7,47.5 7,32 L7,13.5 Z" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="1"/>
+          <!-- Весы правосудия, выполненные тонкими линиями -->
+          <g stroke="url(#cjInk)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none">
+            <line x1="32" y1="18.5" x2="32" y2="43"/>
+            <line x1="25" y1="44" x2="39" y2="44"/>
+            <line x1="20" y1="21" x2="44" y2="21"/>
+            <path d="M32,18.5 L32,21"/>
+            <path d="M20,21 L16.5,30 A3.5,3.5 0 0,0 23.5,30 Z"/>
+            <path d="M44,21 L40.5,30 A3.5,3.5 0 0,0 47.5,30 Z"/>
           </g>
-          <circle cx="32" cy="17" r="1.5" fill="#ffffff"/>
+          <circle cx="32" cy="16.5" r="1.8" fill="url(#cjInk)"/>
         </svg>
       </span>
       <span class="brand-text">
-        <span class="brand-line">CLICK<span class="brand-highlight">JURIST</span></span>
+        <span class="brand-line">Клик<span class="brand-highlight">Юрист</span></span>
         <span class="brand-tagline">Мгновенная юридическая помощь</span>
       </span>
     </a>
@@ -110,7 +122,7 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
   </main>
-  <footer><span>ClickJurist · 152-ФЗ · анонимность данных · 2026</span></footer>
+  <footer><span>КликЮрист · 152-ФЗ · анонимность данных · 2026</span></footer>
   <script src="/static/script.js" defer></script>
 </body>
 </html>
