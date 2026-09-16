@@ -12,12 +12,16 @@
 from __future__ import annotations
 
 import io
+import logging
 import os
+import time
 from dataclasses import dataclass
 from datetime import datetime
 
 from backend.config import PROJECT_ROOT, settings
 from backend.services import prompts
+
+logger = logging.getLogger("clickjurist.pdf")
 
 # Кандидаты на шрифты с поддержкой кириллицы (обычный и жирный начерк)
 _REGULAR_CANDIDATES: tuple[str, ...] = (
@@ -213,47 +217,95 @@ def build_pdf(
 
     Returns:
         Байты готового PDF-документа.
+
+    Raises:
+        RuntimeError: если сборка документа упала с невосстановимой ошибкой
+            (например, файл шрифта недоступен или повреждён).
     """
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import mm
     from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
-    fonts = resolve_fonts()
-    styles = _register_styles(fonts)
+    started = time.perf_counter()
+    logger.info("[PDF] Старт сборки документа (title=%r)", title)
+    try:
+        fonts = resolve_fonts()
+        # Строгая проверка: если заявлен кириллический шрифт, а файла по
+        # указанному пути нет — раньше reportlab уходил в бесконечный цикл.
+        if fonts.cyrillic:
+            if not fonts.regular_path or not os.path.isfile(fonts.regular_path):
+                raise RuntimeError(
+                    f"Файл кириллического шрифта не найден: "
+                    f"regular_path={fonts.regular_path!r}. "
+                    f"Проверьте PDF_FONT_PATH в .env."
+                )
+            if fonts.bold_path and not os.path.isfile(fonts.bold_path):
+                logger.warning(
+                    "[PDF] Bold-шрифт недоступен (%s), используем regular",
+                    fonts.bold_path,
+                )
+                fonts.bold_path = None
+        logger.info(
+            "[PDF] Шрифты успешно зарегистрированы (name=%s, cyrillic=%s)",
+            fonts.name, fonts.cyrillic,
+        )
+        styles = _register_styles(fonts)
 
-    buffer = io.BytesIO()
-    document = SimpleDocTemplate(
-        buffer,
-        pagesize=A4,
-        leftMargin=20 * mm,
-        rightMargin=15 * mm,
-        topMargin=18 * mm,
-        bottomMargin=18 * mm,
-        title=title,
-        author="ClickJurist",
-    )
-
-    flowables: list = [Paragraph(_escape_markup(title), styles["title"])]
-    stamp = datetime.now().strftime("%d.%m.%Y %H:%M")
-    meta = subtitle or f"Сформировано сервисом ClickJurist — {stamp}"
-    flowables.append(Paragraph(_escape_markup(meta), styles["small"]))
-    flowables.append(Spacer(1, 4 * mm))
-    flowables.extend(_markdown_to_flowables(content_markup, styles))
-
-    if not fonts.cyrillic:
-        flowables.append(
-            Paragraph(
-                "Внимание: кириллический шрифт не найден, часть символов может "
-                "отображаться некорректно. Укажите PDF_FONT_PATH в .env.",
-                styles["small"],
-            )
+        buffer = io.BytesIO()
+        document = SimpleDocTemplate(
+            buffer,
+            pagesize=A4,
+            leftMargin=20 * mm,
+            rightMargin=15 * mm,
+            topMargin=18 * mm,
+            bottomMargin=18 * mm,
+            title=title,
+            author="ClickJurist",
         )
 
-    if include_disclaimer:
-        flowables.append(Paragraph(_escape_markup(prompts.AI_DISCLAIMER), styles["small"]))
+        flowables: list = [Paragraph(_escape_markup(title), styles["title"])]
+        stamp = datetime.now().strftime("%d.%m.%Y %H:%M")
+        meta = subtitle or f"Сформировано сервисом ClickJurist — {stamp}"
+        flowables.append(Paragraph(_escape_markup(meta), styles["small"]))
+        flowables.append(Spacer(1, 4 * mm))
+        flowables.extend(_markdown_to_flowables(content_markup, styles))
+        logger.info(
+            "[PDF] Текст документа подготовлен для Canvas (%d flowables)",
+            len(flowables),
+        )
 
-    document.build(flowables)
-    return buffer.getvalue()
+        if not fonts.cyrillic:
+            flowables.append(
+                Paragraph(
+                    "Внимание: кириллический шрифт не найден, часть символов "
+                    "может отображаться некорректно. Укажите PDF_FONT_PATH "
+                    "в .env.",
+                    styles["small"],
+                )
+            )
+
+        if include_disclaimer:
+            flowables.append(
+                Paragraph(_escape_markup(prompts.AI_DISCLAIMER), styles["small"])
+            )
+
+        document.build(flowables)
+        elapsed_ms = int((time.perf_counter() - started) * 1000)
+        logger.info(
+            "[PDF] doc.build() успешно завершен. Файл готов. "
+            "(%d мс, %d байт)",
+            elapsed_ms, buffer.tell(),
+        )
+        return buffer.getvalue()
+    except Exception as exc:  # noqa: BLE001
+        elapsed_ms = int((time.perf_counter() - started) * 1000)
+        logger.error(
+            "[PDF] СБОЙ СБОРКИ через %d мс: %s: %s",
+            elapsed_ms, type(exc).__name__, exc,
+        )
+        # Поднимаем дальше — пусть эндпоинт вернёт 500 за миллисекунды,
+        # а не держит соединение открытым бесконечно.
+        raise
 
 
 def filename_for(service: str) -> str:

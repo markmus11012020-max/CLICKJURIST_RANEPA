@@ -6,7 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 ServiceCode = Literal["consultation", "checklist", "document", "pdf"]
-DocType = Literal["isk", "pretension", "zhaloba"]
+DocType = Literal["complaint", "claim", "lawsuit", "court_order_cancellation"]
 
 
 class QueryRequest(BaseModel):

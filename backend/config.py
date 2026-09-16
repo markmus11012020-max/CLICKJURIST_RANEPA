@@ -97,6 +97,11 @@ class Settings(BaseSettings):
     AITUNNEL_TIMEOUT_S: int = 600
     MAX_TOKENS_LLM_1: int = 4000
     MAX_TOKENS_LLM_2: int = 6000
+    # Расширенные лимиты для длинных юридических документов и чек-листов,
+    # чтобы модель не обрывала генерацию искового заявления / претензии
+    # / жалобы / 4-шагового чек-листа с локализованными судами и сроками.
+    MAX_TOKENS_DOCUMENT: int = 8000
+    MAX_TOKENS_CHECKLIST: int = 4000
 
     # --- 6. Failover-оркестратор ---------------------------------------------
     PRIMARY_PROVIDER: Literal["aitunnel", "yandex"] = "aitunnel"

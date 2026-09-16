@@ -310,35 +310,68 @@ def attach_disclaimer(text: str) -> str:
 
 # --- ДОПОЛНИТЕЛЬНЫЕ СЕРВИСЫ ---------------------------------------------------
 def draft_checklist(masked_query: str, final_answer: str) -> str:
-    """Сгенерировать чек-лист действий на основе готовой консультации."""
-    user_content = (
-        f"СИТУАЦИЯ КЛИЕНТА (обезличено):\n{masked_query}\n\n"
-        f"ГОТОВАЯ КОНСУЛЬТАЦИЯ:\n{final_answer}"
+    """Сгенерировать чек-лист действий на основе готовой консультации.
+
+    Чек-лист содержит жёсткие локализованные данные (конкретный суд,
+    срок давности, досудебный порядок) и требует расширенного лимита
+    ``max_tokens`` (см. ``settings.MAX_TOKENS_CHECKLIST``), чтобы модель
+    не обрывала структуру из 4 шагов с подробными выгодами.
+    """
+    system_prompt = (
+        prompts.PROMPT_CHECKLIST
+        .replace("{{MASKED_QUERY}}", masked_query)
+        .replace("{{FINAL_ANSWER}}", final_answer)
     )
     text, _, _ = _call_with_failover(
         messages=[
-            {"role": "system", "content": prompts.PROMPT_CHECKLIST},
-            {"role": "user", "content": user_content},
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": "Сформируй чек-лист по структуре системного промпта."},
         ],
         model=settings.MODEL_LLM_1,
         temperature=0.2,
-        max_tokens=settings.MAX_TOKENS_LLM_1,
+        max_tokens=getattr(settings, "MAX_TOKENS_CHECKLIST", settings.MAX_TOKENS_LLM_1),
         stage="checklist",
     )
     return text
 
 
 DOC_TYPE_TITLES: dict[str, str] = {
-    "isk": "Исковое заявление",
-    "pretension": "Досудебная претензия",
-    "zhaloba": "Жалоба в вышестоящий орган",
+    "complaint": "Жалоба в вышестоящий орган или контролирующую инстанцию",
+    "claim": "Досудебная претензия продавцу/исполнителю",
+    "lawsuit": "Исковое заявление в суд",
+    "court_order_cancellation": "Заявление об отмене судебного приказа",
 }
 
 
-def draft_document(masked_query: str, doc_type: str = "isk") -> str:
-    """Сгенерировать шаблон процессуального документа."""
-    title = DOC_TYPE_TITLES.get(doc_type, DOC_TYPE_TITLES["isk"])
-    system_prompt = prompts.PROMPT_DOCUMENT.replace("{{DOC_TYPE}}", title)
+def _document_prompt(doc_type: str) -> str:
+    """Подобрать специализированный системный промпт по типу документа.
+
+    Логика маршрутизации (см. prompts.py):
+        • ``lawsuit``                 → :data:`PROMPT_LAWSUIT`
+        • ``claim``                   → :data:`PROMPT_CLAIM`
+        • ``complaint``               → :data:`PROMPT_COMPLAINT`
+        • ``court_order_cancellation``→ :data:`PROMPT_COURT_ORDER_CANCELLATION`
+
+    Для неизвестных значений возвращается :data:`PROMPT_LAWSUIT` как fallback.
+    """
+    return {
+        "lawsuit": prompts.PROMPT_LAWSUIT,
+        "claim": prompts.PROMPT_CLAIM,
+        "complaint": prompts.PROMPT_COMPLAINT,
+        "court_order_cancellation": prompts.PROMPT_COURT_ORDER_CANCELLATION,
+    }.get(doc_type, prompts.PROMPT_LAWSUIT)
+
+
+def draft_document(masked_query: str, doc_type: str = "lawsuit") -> str:
+    """Сгенерировать шаблон процессуального документа.
+
+    Для искового заявления / претензии / жалобы / отмены судебного приказа
+    используется СПЕЦИАЛИЗИРОВАННЫЙ системный промпт с развёрнутой
+    правовой аргументацией и подробной шапкой по АПК/ГПК РФ. Лимит
+    ``max_tokens`` увеличен (см. ``settings.MAX_TOKENS_DOCUMENT``), чтобы
+    модель не обрывала генерацию на середине сложного документа.
+    """
+    system_prompt = _document_prompt(doc_type)
     text, _, _ = _call_with_failover(
         messages=[
             {"role": "system", "content": system_prompt},
@@ -346,7 +379,7 @@ def draft_document(masked_query: str, doc_type: str = "isk") -> str:
         ],
         model=settings.MODEL_LLM_1,
         temperature=0.2,
-        max_tokens=settings.MAX_TOKENS_LLM_1,
+        max_tokens=getattr(settings, "MAX_TOKENS_DOCUMENT", settings.MAX_TOKENS_LLM_1),
         stage="document",
     )
     return text

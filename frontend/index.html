@@ -62,7 +62,6 @@
         <h3>Ответ сервиса</h3>
         <div class="result-body" id="queryResultBody"></div>
         <details class="sources" id="querySources" hidden><summary>Источники и ссылки</summary><ul id="querySourcesList"></ul></details>
-        <p class="result-meta" id="queryResultMeta"></p>
         <div class="result-actions"><button class="btn secondary" id="toChecklistBtn">Составить чек-лист действий →</button></div>
       </article>
     </section>
@@ -76,8 +75,15 @@
 
     <section id="document" class="card">
       <header class="card-head"><h2>Шаг 3. Шаблон документа</h2><span class="badge" id="priceDocument">— ₽</span></header>
-      <p class="card-sub">Исковое заявление, претензия или жалоба — черновик с нормой-обоснованием.</p>
-      <label class="field"><span>Тип документа</span><select id="docType"><option value="isk">Исковое заявление</option><option value="pretension">Претензия</option><option value="zhaloba">Жалоба</option></select></label>
+      <p class="card-sub">Выберите тип документа: жалоба, досудебная претензия, исковое заявление или возражение для отмены судебного приказа.</p>
+      <div class="field"><span>Тип документа</span>
+        <div class="doc-type-row" id="docTypeRow">
+          <button type="button" class="btn ghost doc-type-btn" data-doc-type="complaint" aria-pressed="false">Жалоба</button>
+          <button type="button" class="btn ghost doc-type-btn" data-doc-type="claim" aria-pressed="false">Претензия</button>
+          <button type="button" class="btn ghost doc-type-btn" data-doc-type="lawsuit" aria-pressed="false">Исковое заявление</button>
+          <button type="button" class="btn ghost doc-type-btn" data-doc-type="court_order_cancellation" aria-pressed="false">Отмена судебного приказа</button>
+        </div>
+      </div>
       <div class="actions"><button class="btn primary" id="runDocumentBtn">Сгенерировать документ</button><span class="status" id="documentStatus"></span></div>
       <article class="result" id="documentResult" hidden>
         <h3>Документ</h3><div class="result-body" id="documentResultBody"></div>

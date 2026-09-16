@@ -91,9 +91,34 @@
   async function loadLegal() {
     const { data } = await api("GET", "/api/legal");
     if (!data) return;
-    $("legalDisclaimer").textContent = data.disclaimer || "";
-    $("legalPrivacy").textContent = data.privacy || "";
-    $("legalMasking").textContent = data.masking || "";
+    // /api/legal возвращает готовый markdown — отрендерим его тем же
+    // markdownToHtml, что и результаты консультаций (заголовки, жирный,
+    // маркированные списки).
+    if ($("legalPrivacy") && data.privacy) {
+      $("legalPrivacy").innerHTML = markdownToHtml(data.privacy);
+    }
+    if ($("legalDisclaimer") && data.disclaimer) {
+      $("legalDisclaimer").textContent = data.disclaimer;
+    }
+    if ($("legalMasking")) {
+      // Обратная совместимость: устаревший блок маскировки скрыт.
+      $("legalMasking").hidden = true;
+    }
+  }
+
+  // Состояние выбранного типа документа (см. блок «Шаг 3. Шаблон документа»).
+  // Кнопки идут строго слева направо: complaint → claim → lawsuit → court_order_cancellation.
+  const DOC_TYPE_DEFAULT = "complaint";
+  const stateDocType = { value: DOC_TYPE_DEFAULT };
+
+  function setActiveDocType(value) {
+    stateDocType.value = value;
+    document.querySelectorAll(".doc-type-btn").forEach((btn) => {
+      const active = btn.getAttribute("data-doc-type") === value;
+      btn.classList.toggle("primary", active);
+      btn.classList.toggle("ghost", !active);
+      btn.setAttribute("aria-pressed", active ? "true" : "false");
+    });
   }
 
   function renderSessionChip() {
@@ -166,10 +191,15 @@
       if (status === 200 && data && data.response) {
         state.lastQuery = query; state.lastAnswer = data.response;
         $("queryResultBody").innerHTML = markdownToHtml(data.response);
-        $("queryResultMeta").textContent =
-          "Контуров маскировки: " + (data.stage1_provider || "—") +
-          " · анализ: " + (data.stage2_provider || "—") +
-          (data.warning ? " · ⚠ " + data.warning : "");
+        // Логи масскирования/провайдеров уходят строго в консоль разработчика —
+        // клиент видит чистый ответ без технической мета-информации.
+        if (typeof console !== "undefined" && console.debug) {
+          console.debug("[clickjurist] consultation", {
+            stage1_provider: data.stage1_provider || "—",
+            stage2_provider: data.stage2_provider || "—",
+            warning: data.warning || "",
+          });
+        }
         const list = $("querySourcesList");
         list.innerHTML = "";
         (data.sources || []).forEach((src) => {
@@ -229,9 +259,18 @@
   async function runDocument() {
     const query = ($("queryInput").value || "").trim();
     if (query.length < 3) { toast("Опишите ситуацию подробнее", "error"); return; }
-    const docType = $("docType").value;
-    setStatus($("documentStatus"), "Готовлю документ…");
-    const btn = $("runDocumentBtn"); btn.disabled = true;
+    // doc_type приходит ИЗ АКТИВНОЙ КНОПКИ в блоке «Шаг 3. Шаблон документа».
+    // Кнопки идут слева направо: complaint → claim → lawsuit → court_order_cancellation.
+    const docType = stateDocType.value;
+    const btn = $("runDocumentBtn");
+    // 1. Блокируем кнопку и показываем аккуратный анимированный спиннер внутри неё —
+    //    это надёжный индикатор загрузки на любых устройствах, в т.ч. на медленном канале.
+    btn.disabled = true;
+    btn.classList.add("is-loading");
+    btn.dataset.originalLabel = btn.dataset.originalLabel || btn.textContent;
+    btn.innerHTML = '<span class="spinner" aria-hidden="true"></span>' + btn.dataset.originalLabel;
+    // 2. Солидный статус рядом с кнопкой.
+    setStatus($("documentStatus"), "Формирование правового документа…");
     try {
       const { status, data } = await api("POST", "/api/document", { query, doc_type: docType });
       if (status === 200 && data && data.document) {
@@ -250,7 +289,12 @@
       setStatus($("documentStatus"), "Сбой сети", "error");
       toast("Сбой сети: " + e.message, "error");
     } finally {
+      // 3. Снимаем блокировку и спиннер, восстанавливаем оригинальную подпись.
       btn.disabled = false;
+      btn.classList.remove("is-loading");
+      if (btn.dataset.originalLabel) {
+        btn.textContent = btn.dataset.originalLabel;
+      }
     }
   }
 
@@ -292,6 +336,16 @@
     });
     if ($("paywallClose")) $("paywallClose").addEventListener("click", closePaywall);
     if ($("paywall")) $("paywall").addEventListener("click", (e) => { if (e.target === $("paywall")) closePaywall(); });
+    // 4 кнопки выбора типа документа (см. блок «Шаг 3»). Навешиваем обработчик
+    // единожды, чтобы не дублировать клики.
+    document.querySelectorAll(".doc-type-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const value = btn.getAttribute("data-doc-type");
+        if (value) setActiveDocType(value);
+      });
+    });
+    // Активируем дефолтную кнопку при загрузке (complaint — первая слева).
+    setActiveDocType(DOC_TYPE_DEFAULT);
   }
 
   document.addEventListener("DOMContentLoaded", () => {

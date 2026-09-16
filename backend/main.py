@@ -19,10 +19,12 @@
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 
 from fastapi import FastAPI, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -268,7 +270,13 @@ async def api_document(payload: DocumentRequest, request: Request) -> Response:
 
 @app.post("/api/pdf")
 async def api_pdf(payload: ChecklistRequest, request: Request) -> Response:
-    """PDF-версия консультации с поддержкой кириллицы (ReportLab)."""
+    """PDF-версия консультации с поддержкой кириллицы (ReportLab).
+
+    Тяжёлая CPU-bound сборка PDF выполняется в отдельном потоке через
+    ``run_in_threadpool``, чтобы не блокировать event-loop FastAPI.
+    ``asyncio.wait_for`` гарантирует, что зависший генератор не держит
+    соединение открытым бесконечно — клиент получит HTTP 504 по таймауту.
+    """
     session_hash, session_id, was_free, denial = _session_gate(request, "pdf")
     if denial is not None:
         return denial
@@ -276,19 +284,54 @@ async def api_pdf(payload: ChecklistRequest, request: Request) -> Response:
         store.consume_free_request(session_hash)
     store.register_request(session_hash, was_free)
 
+    # Таймаут генерации PDF: 60 секунд — даже очень длинный отчёт
+    # обрабатывается за 5–10 секунд; всё, что дольше — это зависание.
+    PDF_TIMEOUT_S = 60.0
+    started = time.perf_counter()
     try:
-        pdf_bytes = pdf_generator.build_pdf(
-            title="Юридическая консультация ClickJurist",
-            content_markup=payload.final_answer,
-            subtitle=f"Документ сформирован ClickJurist • сессия {session_id[:8]}",
+        logger.info("[PDF] /api/pdf: offloading build_pdf to threadpool")
+        pdf_bytes = await asyncio.wait_for(
+            run_in_threadpool(
+                pdf_generator.build_pdf,
+                title="Юридическая консультация ClickJurist",
+                content_markup=payload.final_answer,
+                subtitle=(
+                    f"Документ сформирован ClickJurist • "
+                    f"сессия {session_id[:8]}"
+                ),
+            ),
+            timeout=PDF_TIMEOUT_S,
+        )
+    except asyncio.TimeoutError:
+        elapsed_ms = int((time.perf_counter() - started) * 1000)
+        logger.error(
+            f"[PDF] TIMEOUT: build_pdf не завершился за {PDF_TIMEOUT_S:.0f}с "
+            f"(прошло {elapsed_ms} мс)"
+        )
+        store.log_request(session_hash, "pdf", 504, was_free)
+        return JSONResponse(
+            status_code=504,
+            content={
+                "error": (
+                    f"Превышено время формирования PDF ({PDF_TIMEOUT_S:.0f}с). "
+                    "Сервис автоматически прервал зависшую операцию."
+                )
+            },
         )
     except Exception as exc:  # noqa: BLE001
-        logger.error(f"Ошибка формирования PDF: {type(exc).__name__}")
+        elapsed_ms = int((time.perf_counter() - started) * 1000)
+        logger.error(
+            f"[PDF] Ошибка формирования PDF: {type(exc).__name__}: {exc} "
+            f"(прошло {elapsed_ms} мс)"
+        )
         store.log_request(session_hash, "pdf", 502, was_free)
         return JSONResponse(
-            status_code=500, content={"error": f"Ошибка формирования PDF: {exc}"}
+            status_code=500,
+            content={"error": f"Ошибка формирования PDF: {exc}"},
         )
 
+    elapsed_ms = int((time.perf_counter() - started) * 1000)
+    logger.info(f"[PDF] Готово за {elapsed_ms} мс, размер {len(pdf_bytes)} байт")
     store.log_request(session_hash, "pdf", 200, was_free)
     return Response(
         content=pdf_bytes,
@@ -468,14 +511,19 @@ async def api_legal() -> dict[str, str]:
     return {
         "disclaimer": AI_DISCLAIMER,
         "privacy": (
-            "Сервис не сохраняет текст запросов, ФИО, адреса и иные персональные "
-            "данные. Идентификация сессии выполняется по необратимому хешу "
-            "(SHA-256) от IP и отпечатка браузера в соответствии с 152-ФЗ."
+            "### 🔒 Безопасность и конфиденциальность (152-ФЗ)\n"
+            "Сервис спроектирован в строгом соответствии с российским "
+            "законодательством о защите персональных данных:\n"
+            "* **Полная анонимность:** Мы не храним тексты ваших обращений, "
+            "фамилии, адреса или телефоны на серверах.\n"
+            "* **Защита данных на лету:** Все личные данные (Имена, контакты) "
+            "автоматически удаляются из текста до того, как запрос будет "
+            "отправлен на интеллектуальный анализ.\n"
+            "* **Конфиденциальность сессии:** Доступ к вашим бесплатным лимитам "
+            "и документам защищен безопасным цифровым идентификатором вашего "
+            "устройства."
         ),
-        "masking": (
-            "Перед анализом внешней моделью персональные данные заменяются "
-            "плейсхолдерами в контуре РФ (YandexGPT / локальная модель)."
-        ),
+        "masking": "",
     }
 
 

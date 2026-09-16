@@ -37,6 +37,28 @@ h3 { font-size:18px; color: var(--text-soft); }
 p { margin:0 0 12px; color: var(--text-soft); }
 main { max-width: var(--max-width); margin:0 auto; padding: 28px 22px 80px; }
 .topbar { display:flex; align-items:center; gap:24px; max-width:var(--max-width); margin:0 auto; padding:20px 22px; position:sticky; top:0; background:rgba(6,9,20,.78); backdrop-filter: blur(16px); z-index:30; border-bottom:1px solid var(--line); }
+/* ===== Спиннер загрузки (внутри кнопок) =====
+   Аккуратный индиго-спиннер, чтобы кнопка не выглядела «зависшей»
+   во время формирования документа. Чистое CSS-решение, без внешних зависимостей. */
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 8px;
+  border: 2px solid rgba(255, 255, 255, .35);
+  border-top-color: rgba(255, 255, 255, .95);
+  border-radius: 50%;
+  animation: cj-spin .9s linear infinite;
+  vertical-align: -2px;
+}
+@keyframes cj-spin {
+  to { transform: rotate(360deg); }
+}
+.btn.is-loading { opacity: .85; cursor: progress; }
+.btn.is-loading:hover { transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation: none; }
+}
 /* ===== Бренд / уникальный логотип в шапке ===== */
 .brand { display:flex; align-items:center; gap:12px; font-weight:700; font-size:20px; letter-spacing:.04em; text-decoration:none; color:var(--text); }
 .brand:hover { text-decoration:none; }
@@ -76,6 +98,11 @@ main { max-width: var(--max-width); margin:0 auto; padding: 28px 22px 80px; }
 .field textarea, .field select, .field input { width:100%; padding:14px 16px; border-radius:12px; border:1px solid var(--line-strong); background:rgba(0,0,0,.28); color:var(--text); font-size:15px; font-family:inherit; resize:vertical; }
 .field textarea:focus, .field select:focus, .field input:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(110,168,255,.18); }
 .actions { display:flex; align-items:center; gap:16px; margin-top:8px; flex-wrap:wrap; }
+
+  /* Ряд из 4 открытых кнопок выбора типа документа (см. блок «Шаг 3»).
+     Слева направо: Жалоба → Претензия → Исковое заявление → Отмена судебного приказа. */
+  .doc-type-row { display:flex; flex-wrap:wrap; gap:10px; margin-top:4px; }
+  .doc-type-row .doc-type-btn { flex: 1 1 auto; min-width: 140px; padding: 12px 14px; font-size:14px; }
 .status { font-size:13px; color:var(--text-mute); }
 .status.error { color: var(--danger); }
 .status.success { color: var(--good); }
