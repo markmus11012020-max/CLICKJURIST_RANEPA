@@ -40,25 +40,40 @@
     return { status: resp.status, ok: resp.ok, data, headers: resp.headers };
   }
 
-  /** Шаблоны быстрых пресетов (раздел 4.1 ТЗ prompt160926.md). */
+  /** Шаблоны быстрых пресетов (Шаг 2 ТЗ prompt170926.md: 6 тегов, 50/50 B2C/B2B). */
   const QUICK_TAG_TEMPLATES = {
-    neighbors_flood:
-      "Затопили соседи сверху. Квартира на 5 этаже, залит потолок в гостиной и спальне, " +
-      "повреждена мебель и техника. Управляющая компания отказывается возмещать ущерб, " +
-      "ссылаясь на то, что виноваты соседи. Хочу взыскать ущерб с соседей и зафиксировать " +
-      "факт затопления для суда.",
-    refund_denied:
-      "Купил смартфон в магазине за 75 000 ₽. Через 10 дней обнаружил заводской брак — " +
+    // --- B2C: бытовые потребности ---
+    refund_goods:
+      "Купил смартфон в магазине «[ORG_1]» за 75 000 ₽. Через 10 дней обнаружил заводской брак — " +
       "не работает камера. Продавец отказывается вернуть деньги, предлагает только ремонт. " +
-      "Хочу вернуть уплаченную сумму и компенсацию.",
+      "Чек и гарантийный талон на руках. Хочу вернуть уплаченную сумму, неустойку и компенсацию морального вреда.",
+    labor_rights:
+      "Работодатель ООО «[ORG_1]» систематически нарушает трудовое право: задерживает заработную плату " +
+      "3 месяца, не предоставляет отпуск, не оформляет трудовой договор в полном объёме. " +
+      "Зарплата «в конверте» 80 000 ₽. Хочу взыскать задолженность, компенсацию по ст. 236 ТК РФ " +
+      "и привлечь работодателя к административной ответственности.",
     gibdd_fine:
-      "Получил штраф ГИБДД за превышение скорости 22.09.2026 на 40 ₽. Считаю штраф " +
-      "незаконным: в момент фиксации нарушения автомобилем управлял не я, а мой коллега " +
-      "по доверенности. Хочу обжаловать постановление.",
-    salary_delay:
-      "Работодатель ООО «[ORG_1]» задерживает заработную плату 3 месяца. Трудовой договор " +
-      "оформлен официально, зарплата 80 000 ₽ в месяц. Хочу взыскать задолженность и " +
-      "компенсацию по ст. 236 ТК РФ.",
+      "Получил постановление ГИБДД от 22.09.2026 о штрафе за превышение скорости. " +
+      "Считаю штраф незаконным: в момент фиксации нарушения автомобилем управлял не я, " +
+      "а мой коллега по доверенности. Хочу обжаловать постановление в суде и отменить штраф.",
+    // --- B2B: корпоративное право и для юристов ---
+    debt_recovery:
+      "Контрагент ООО «[ORG_1]» (ИНН [INN_1]) не оплатил поставленный товар по договору поставки " +
+      "№ [CASE_1] от 01.08.2026 на сумму 1 200 000 ₽. Срок оплаты истёк 30.09.2026. " +
+      "Претензию направили, ответа нет. Хочу взыскать задолженность, неустойку по ст. 395 ГК РФ " +
+      "и расходы на юридическую помощь через Арбитражный суд.",
+    ooo_meeting:
+      "Участник ООО «[ORG_1]» с долей 30% уставного капитала. 15.10.2026 проведено внеочередное " +
+      "общее собрание участников, на которое я не был надлежащим образом уведомлён. " +
+      "Приняты решения об одобрении крупной сделки по отчуждению недвижимого имущества " +
+      "общества по заниженной цене. Хочу обжаловать решение собрания по ст. 43 ФЗ «Об ООО» " +
+      "и признать сделку недействительной.",
+    b2b_audit:
+      "Необходим правовой аудит договора поставки № [CASE_1] между ООО «[ORG_1]» (покупатель) " +
+      "и ООО «[ORG_2]» (поставщик) на сумму 5 000 000 ₽. Договор содержит спорные условия " +
+      "об ограничении ответственности поставщика, одностороннем изменении цены и арбитражной " +
+      "оговорке. Хочу получить экспертное заключение о рисках и рекомендации по корректировке " +
+      "существенных условий перед подписанием.",
   };
 
   /** Подставить шаблон пресета в поле ввода. */
@@ -157,7 +172,7 @@
    * 402 для /api/query, /api/checklist, /api/document и /api/pdf (см. runQuery,
    * runChecklist, runDocument, runPdf). Любой иной источник вызова заблокирован.
    */
-  const PAYWALL_SERVICES = new Set(["consultation", "checklist", "document", "pdf"]);
+  const PAYWALL_SERVICES = new Set(["consultation", "checklist", "document", "pdf", "package_basic", "package_premium"]);
 
   async function loadSession() {
     const { status, data } = await api("GET", "/api/session");
@@ -180,9 +195,11 @@
     if ($("legalDisclaimer") && data.disclaimer) {
       $("legalDisclaimer").textContent = data.disclaimer;
     }
-    if ($("legalMasking")) {
-      // Обратная совместимость: устаревший блок маскировки скрыт.
-      $("legalMasking").hidden = true;
+    // Блок «Как мы защищаем ваши персональные данные (152-ФЗ)» (Шаг 5 ТЗ prompt170926.md).
+    // Если бэкенд вернул текст маскировки — рендерим его в аккордеон.
+    // Если нет — оставляем статический текст из index.html.
+    if ($("legalMasking") && data.masking) {
+      $("legalMasking").innerHTML = markdownToHtml(data.masking);
     }
   }
 
@@ -222,6 +239,8 @@
     if ($("priceConsult")) $("priceConsult").textContent = (p.consultation || 99) + " ₽";
     if ($("priceChecklist")) $("priceChecklist").textContent = (p.checklist || 100) + " ₽";
     if ($("priceDocument")) $("priceDocument").textContent = (p.document || 300) + " ₽";
+    // Пакетный тариф «Всё включено» (Шаг 4 ТЗ prompt170926.md).
+    if ($("packagePrice")) $("packagePrice").textContent = (p.package_basic || 390) + " ₽";
   }
 
   function toast(message, kind) {
@@ -253,6 +272,8 @@
       checklist: "чек-лист действий",
       document: "шаблон документа",
       pdf: "PDF-версия",
+      package_basic: "Всё включено (Консультация + Чек-лист + Документ)",
+      package_premium: "Всё включено Премиум",
     }[service] || service);
     $("paywallAmount").textContent = amount + " ₽";
     const link = $("paywallLink");
@@ -264,48 +285,189 @@
   async function runQuery() {
     const query = ($("queryInput").value || "").trim();
     if (query.length < 3) { toast("Опишите ситуацию подробнее", "error"); return; }
-    setStatus($("queryStatus"), "Обрабатываю…");
+    setStatus($("queryStatus"), "Ставим задачу в очередь…");
     const btn = $("runQueryBtn"); btn.disabled = true;
+    state.lastQuery = query; state.lastAnswer = "";
+    lockDependentSteps();
+    showSkeletonAndTimer();
     try {
-      const { status, data } = await api("POST", "/api/query", { query });
-      if (status === 200 && data && data.response) {
-        state.lastQuery = query; state.lastAnswer = data.response;
-        $("queryResultBody").innerHTML = markdownToHtml(data.response);
-        // Логи масскирования/провайдеров уходят строго в консоль разработчика —
-        // клиент видит чистый ответ без технической мета-информации.
-        if (typeof console !== "undefined" && console.debug) {
-          console.debug("[clickjurist] consultation", {
-            stage1_provider: data.stage1_provider || "—",
-            stage2_provider: data.stage2_provider || "—",
-            warning: data.warning || "",
-          });
-        }
-        const list = $("querySourcesList");
-        list.innerHTML = "";
-        (data.sources || []).forEach((src) => {
-          const li = document.createElement("li");
-          const a = document.createElement("a");
-          a.href = src.url; a.textContent = src.title; a.target = "_blank"; a.rel = "noopener noreferrer";
-          li.appendChild(a); list.appendChild(li);
-        });
-        show($("querySources")); if (!(data.sources || []).length) hide($("querySources"));
-        show($("queryResult"));
-        setStatus($("queryStatus"), "Готово ✓", "success");
-        toast("Консультация получена", "success");
-        loadSession();
+      const { status, data } = await api("POST", "/api/query/async", { query });
+      if (status === 202 && data && data.task_id) {
+        const taskId = data.task_id;
+        setStatus($("queryStatus"), "Генерация в фоне…");
+        await streamConsultation(taskId, query);
       } else if (status === 402 && data && data.payment_url) {
+        hideSkeletonAndTimer();
         setStatus($("queryStatus"), "Требуется оплата", "error");
         openPaywall(data.service || "consultation", data.amount, data.payment_url);
       } else {
+        hideSkeletonAndTimer();
         setStatus($("queryStatus"), "Ошибка", "error");
-        toast((data && (data.error || data.detail)) || "Не удалось получить ответ", "error");
+        toast((data && (data.error || data.detail)) || "Не удалось поставить задачу", "error");
       }
     } catch (e) {
+      hideSkeletonAndTimer();
       setStatus($("queryStatus"), "Сбой сети", "error");
       toast("Сбой сети: " + e.message, "error");
     } finally {
       btn.disabled = false;
     }
+  }
+
+  /**
+   * SSE-стриминг консультации (Шаг 1 ТЗ prompt170926.md).
+   * Подписывается на /api/query/stream/{task_id} и рендерит токены
+   * в реальном времени по мере их поступления от бэкенда.
+   */
+  function streamConsultation(taskId, query) {
+    return new Promise((resolve) => {
+      let accumulated = "";
+      let sources = [];
+      let stage2Provider = "";
+      let stage1Provider = "";
+      let warning = "";
+      let timerHandle = null;
+      const startedAt = Date.now();
+
+      const timerEl = $("queryTimerText");
+      if (timerEl) {
+        timerEl.textContent = "Идёт правовой анализ… Прошло 0 сек.";
+        timerHandle = setInterval(() => {
+          const sec = Math.floor((Date.now() - startedAt) / 1000);
+          if (timerEl) timerEl.textContent = "Идёт правовой анализ… Прошло " + sec + " сек.";
+        }, 1000);
+      }
+      const stopTimer = () => { if (timerHandle) { clearInterval(timerHandle); timerHandle = null; } };
+
+      let es;
+      try {
+        es = new EventSource(API_BASE + "/api/query/stream/" + taskId);
+      } catch (e) {
+        stopTimer();
+        hideSkeletonAndTimer();
+        setStatus($("queryStatus"), "Сбой сети", "error");
+        toast("Не удалось открыть поток: " + e.message, "error");
+        resolve();
+        return;
+      }
+
+      es.onmessage = (ev) => {
+        let payload = null;
+        try { payload = JSON.parse(ev.data); } catch (_) { return; }
+        if (!payload || !payload.type) return;
+
+        if (payload.type === "started" || payload.type === "progress") return;
+
+        if (payload.type === "token") {
+          accumulated += (payload.text || "");
+          const body = $("queryResultBody");
+          if (body) body.textContent = accumulated;
+          const sk = $("querySkeleton");
+          if (sk && !sk.hidden) sk.hidden = true;
+          return;
+        }
+        if (payload.type === "sources") { sources = payload.sources || []; return; }
+        if (payload.type === "meta") {
+          stage1Provider = payload.stage1_provider || stage1Provider;
+          stage2Provider = payload.stage2_provider || stage2Provider;
+          warning = payload.warning || warning;
+          return;
+        }
+        if (payload.type === "completed") {
+          stopTimer(); es.close();
+          const finalText = (payload.result && payload.result.response) || accumulated;
+          state.lastAnswer = finalText;
+          const body = $("queryResultBody");
+          if (body) body.innerHTML = markdownToHtml(finalText);
+          const list = $("querySourcesList");
+          if (list) {
+            list.innerHTML = "";
+            (sources || []).forEach((src) => {
+              const li = document.createElement("li");
+              const a = document.createElement("a");
+              a.href = src.url; a.textContent = src.title; a.target = "_blank"; a.rel = "noopener noreferrer";
+              li.appendChild(a); list.appendChild(li);
+            });
+          }
+          show($("querySources")); if (!(sources || []).length) hide($("querySources"));
+          hideSkeletonAndTimer();
+          show($("queryResult"));
+          setStatus($("queryStatus"), "Готово ✓", "success");
+          toast("Консультация получена", "success");
+          unlockDependentSteps();
+          loadSession();
+          if (typeof console !== "undefined" && console.debug) {
+            console.debug("[clickjurist] consultation", {
+              stage1_provider: stage1Provider || "—",
+              stage2_provider: stage2Provider || "—",
+              warning: warning || "",
+            });
+          }
+          resolve();
+          return;
+        }
+        if (payload.type === "failed") {
+          stopTimer(); es.close();
+          hideSkeletonAndTimer();
+          setStatus($("queryStatus"), "Ошибка генерации", "error");
+          toast(payload.error || "Не удалось получить ответ", "error");
+          resolve();
+          return;
+        }
+        if (payload.type === "cancelled") {
+          stopTimer(); es.close();
+          hideSkeletonAndTimer();
+          resolve();
+          return;
+        }
+      };
+
+      es.onerror = () => {
+        if (typeof console !== "undefined" && console.debug) {
+          console.debug("[clickjurist] SSE reconnecting…");
+        }
+      };
+    });
+  }
+
+  /** Показать скелетон-заглушку и таймер (Шаг 1 ТЗ prompt170926.md). */
+  function showSkeletonAndTimer() {
+    const sk = $("querySkeleton"); if (sk) sk.hidden = false;
+    const tm = $("queryTimer"); if (tm) tm.hidden = false;
+    const body = $("queryResultBody"); if (body) body.textContent = "";
+    show($("queryResult"));
+  }
+
+  /** Скрыть скелетон и таймер после завершения генерации. */
+  function hideSkeletonAndTimer() {
+    const sk = $("querySkeleton"); if (sk) sk.hidden = true;
+    const tm = $("queryTimer"); if (tm) tm.hidden = true;
+  }
+
+  /** Заблокировать Шаги 2 и 3 (Шаг 3 ТЗ prompt170926.md). */
+  function lockDependentSteps() {
+    document.querySelectorAll(".card[data-step]").forEach((card) => {
+      card.classList.add("step-locked");
+      card.classList.remove("step-unlocked");
+      card.querySelectorAll("button.btn").forEach((b) => { b.disabled = true; });
+    });
+  }
+
+  /** Разблокировать Шаги 2 и 3 после завершения Шага 1. */
+  function unlockDependentSteps() {
+    document.querySelectorAll(".card[data-step]").forEach((card) => {
+      card.classList.remove("step-locked");
+      card.classList.add("step-unlocked");
+      const stepNum = card.getAttribute("data-step");
+      if (stepNum === "2") {
+        const btn = card.querySelector("#runChecklistBtn");
+        if (btn) btn.disabled = false;
+      }
+      if (stepNum === "3") {
+        const btn = card.querySelector("#runDocumentBtn");
+        if (btn) btn.disabled = false;
+      }
+    });
   }
 
   /** Асинхронная генерация через polling (раздел 2.1 ТЗ prompt160926.md). */
@@ -473,6 +635,26 @@
     }
   }
 
+  /**
+   * Пакетная покупка «Всё включено» (Шаг 4 ТЗ prompt170926.md).
+   * Создаёт счёт в Робокассе и открывает окно оплаты.
+   */
+  async function runPackage() {
+    const btn = $("runPackageBtn"); if (btn) btn.disabled = true;
+    try {
+      const { status, data } = await api("POST", "/api/payment/create", { service: "package_basic" });
+      if (status === 200 && data && data.payment_url) {
+        openPaywall("package_basic", data.amount, data.payment_url);
+      } else {
+        toast((data && data.error) || "Не удалось создать счёт", "error");
+      }
+    } catch (e) {
+      toast("Сбой при создании счёта: " + e.message, "error");
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
   function bind() {
     document.querySelectorAll("[data-scroll]").forEach((el) => {
       el.addEventListener("click", () => {
@@ -484,6 +666,7 @@
     if ($("runChecklistBtn")) $("runChecklistBtn").addEventListener("click", runChecklist);
     if ($("runDocumentBtn")) $("runDocumentBtn").addEventListener("click", runDocument);
     if ($("runPdfBtn")) $("runPdfBtn").addEventListener("click", runPdf);
+    if ($("runPackageBtn")) $("runPackageBtn").addEventListener("click", runPackage);
     if ($("toChecklistBtn")) $("toChecklistBtn").addEventListener("click", () => {
       const target = $("checklist"); if (target) target.scrollIntoView({ behavior: "smooth" });
     });

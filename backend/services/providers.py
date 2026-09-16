@@ -16,6 +16,7 @@
 """
 from __future__ import annotations
 
+import json
 import re
 import time
 from abc import ABC, abstractmethod
@@ -148,6 +149,21 @@ class BaseProvider(ABC):
     ) -> str:
         """Выполнить чат-запрос и вернуть текст ответа модели."""
 
+    def stream_chat(
+        self,
+        messages: list[dict[str, str]],
+        model: str | None = None,
+        temperature: float = 0.2,
+        max_tokens: int = 4000,
+    ) -> "Iterator[str]":
+        """Стриминг токенов от модели (Шаг 1 ТЗ prompt170926.md).
+
+        По умолчанию провайдеры НЕ поддерживают стриминг — выбрасывается
+        :class:`LLMError`. Конкретные реализации (AITunnel, YandexGPT, Ollama)
+        переопределяют этот метод, если их API поддерживает SSE/stream-режим.
+        """
+        raise LLMError(f"{self.name}: стриминг токенов не поддерживается этим провайдером")
+
     def __repr__(self) -> str:  # pragma: no cover — отладочное представление
         return f"<{self.__class__.__name__} name={self.name}>"
 
@@ -217,6 +233,73 @@ class AITunnelProvider(BaseProvider):
                 time.sleep(self.RETRY_SLEEP_S * (attempt + 1))
 
         raise LLMError(f"aitunnel: {last_error} после {self.RETRY_ON_NULL + 1} попыток")
+
+    def stream_chat(
+        self,
+        messages: list[dict[str, str]],
+        model: str | None = None,
+        temperature: float = 0.2,
+        max_tokens: int = 4000,
+    ):
+        """Стриминг токенов через AITunnel (OpenAI-совместимый SSE).
+
+        Возвращает генератор строк — фрагментов текста ответа модели.
+        Использует ``stream: true`` в payload и читает NDJSON из HTTP-ответа.
+        """
+        if not self.is_configured():
+            raise LLMError("aitunnel: не задан ROUTER_API_KEY")
+
+        model = model or settings.ROUTER_DEFAULT_MODEL
+        payload = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "stream": True,
+        }
+        headers = {
+            "Authorization": f"Bearer {_ascii_safe('ROUTER_API_KEY', settings.ROUTER_API_KEY, self.name)}",
+            "Content-Type": "application/json",
+            "Accept": "text/event-stream",
+        }
+
+        try:
+            response = requests.post(
+                self.endpoint,
+                headers=_sanitize_headers(headers, self.name),
+                json=payload,
+                timeout=settings.AITUNNEL_TIMEOUT_S,
+                stream=True,
+            )
+        except requests.RequestException as exc:
+            raise LLMError(f"aitunnel: сетевая ошибка — {exc}") from exc
+
+        if response.status_code >= 400:
+            raise LLMError(
+                f"aitunnel: HTTP {response.status_code} — {response.text[:300]}"
+            )
+
+        # Читаем SSE-поток: строки вида "data: {...}\n\n", терминатор "data: [DONE]".
+        for raw_line in response.iter_lines(decode_unicode=True):
+            if not raw_line:
+                continue
+            line = raw_line.strip()
+            if not line.startswith("data:"):
+                continue
+            data_str = line[len("data:"):].strip()
+            if data_str == "[DONE]":
+                break
+            try:
+                chunk = json.loads(data_str)
+            except ValueError:
+                continue
+            choices = chunk.get("choices") or []
+            if not choices:
+                continue
+            delta = choices[0].get("delta") or {}
+            piece = delta.get("content")
+            if piece:
+                yield str(piece)
 
 
 class YandexGPTProvider(BaseProvider):

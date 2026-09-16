@@ -691,7 +691,34 @@ footer { text-align:center; padding:40px 22px; color:var(--text-mute); font-size
 
   .quick-tag { font-size:12px; padding:6px 10px; }
 
+  /* 6 новых тегов на узких экранах: 2 ряда по 3, без вылезания за границы. */
+  .quick-tags { gap:6px; margin:10px 0 14px; }
+  .quick-tag {
+    font-size:11px;
+    padding:6px 10px;
+    flex:1 1 calc(50% - 6px);
+    min-width:0;
+    text-align:center;
+    line-height:1.3;
+  }
 
+  /* Пакетная кнопка на мобильном: компактнее. */
+  .package-btn { padding:12px 14px; gap:10px; }
+  .package-btn-title { font-size:14px; }
+  .package-btn-sub { font-size:11px; }
+  .package-btn-price { font-size:12px; padding:4px 10px; }
+
+  /* Скелетон и таймер на мобильном. */
+  .result-timer { font-size:12px; padding:8px 12px; }
+  .skeleton-line { height:12px; }
+
+  /* Блокировка шагов: компактнее бейдж. */
+  .card.step-locked::before {
+    font-size:10px;
+    padding:3px 8px;
+    top:10px;
+    right:10px;
+  }
 
   .paywall-card { padding:20px; }
 
@@ -742,6 +769,189 @@ footer { text-align:center; padding:40px 22px; color:var(--text-mute); font-size
 
 .quick-tag:active {
   transform:scale(.97);
+}
+
+/* ===== Пакетный тариф «Всё включено» (Шаг 4 ТЗ prompt170926.md) ===== */
+
+.package-cta {
+  margin-top:14px;
+  margin-bottom:4px;
+}
+
+.package-btn {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  width:100%;
+  padding:14px 20px;
+  border-radius:14px;
+  border:1px solid rgba(var(--accent-rgb), .45);
+  background:linear-gradient(135deg, rgba(var(--accent-rgb), .18) 0%, rgba(var(--accent-rgb), .08) 100%);
+  color:var(--text);
+  font-size:14px;
+  font-weight:600;
+  cursor:pointer;
+  transition: transform .12s ease, background .12s ease, border-color .12s ease;
+  text-align:left;
+}
+
+.package-btn:hover:not(:disabled) {
+  transform:translateY(-1px);
+  background:linear-gradient(135deg, rgba(var(--accent-rgb), .28) 0%, rgba(var(--accent-rgb), .14) 100%);
+  border-color:var(--accent);
+}
+
+.package-btn-title {
+  font-size:15px;
+  font-weight:700;
+  color:var(--text);
+}
+
+.package-btn-sub {
+  display:block;
+  font-size:12px;
+  font-weight:500;
+  color:var(--text-soft);
+  margin-top:2px;
+}
+
+.package-btn-price {
+  flex-shrink:0;
+  padding:6px 14px;
+  border-radius:999px;
+  background:rgba(var(--accent-rgb), .22);
+  border:1px solid rgba(var(--accent-rgb), .5);
+  color:var(--accent-soft);
+  font-size:14px;
+  font-weight:700;
+  white-space:nowrap;
+}
+
+/* ===== Skeleton Loader + Таймер (Шаг 1 ТЗ prompt170926.md) ===== */
+
+.result-timer {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:6px 0 14px;
+  padding:10px 14px;
+  border-radius:10px;
+  background:rgba(var(--accent-rgb), .08);
+  border:1px solid rgba(var(--accent-rgb), .25);
+  color:var(--text-soft);
+  font-size:13px;
+}
+
+.skeleton-loader {
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  padding:6px 0 14px;
+}
+
+.skeleton-line {
+  height:14px;
+  border-radius:6px;
+  background:linear-gradient(90deg, rgba(255,255,255,.06) 0%, rgba(255,255,255,.14) 50%, rgba(255,255,255,.06) 100%);
+  background-size:200% 100%;
+  animation:cj-skeleton 1.4s ease-in-out infinite;
+}
+
+.skeleton-line.skeleton-title {
+  height:20px;
+  width:55%;
+}
+
+.skeleton-line.short {
+  width:70%;
+}
+
+@keyframes cj-skeleton {
+  0% { background-position:200% 0; }
+  100% { background-position:-200% 0; }
+}
+
+/* ===== Блокировка зависимых шагов (Шаг 3 ТЗ prompt170926.md) ===== */
+
+.card.step-locked {
+  position:relative;
+  opacity:.55;
+  pointer-events:none;
+  filter:saturate(.6);
+}
+
+.card.step-locked::before {
+  content:"🔒 Заблокировано: сначала завершите Шаг 1";
+  position:absolute;
+  top:14px;
+  right:14px;
+  padding:4px 10px;
+  border-radius:999px;
+  background:rgba(255,255,255,.06);
+  border:1px solid var(--line-strong);
+  color:var(--text-mute);
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:.02em;
+}
+
+.card.step-locked .btn,
+.card.step-locked .doc-type-btn {
+  cursor:not-allowed !important;
+}
+
+.card.step-unlocked {
+  opacity:1;
+  pointer-events:auto;
+  filter:none;
+  animation:cj-step-unlock .5s ease-out;
+}
+
+@keyframes cj-step-unlock {
+  0% { opacity:.55; filter:saturate(.6); transform:translateY(6px); }
+  100% { opacity:1; filter:none; transform:translateY(0); }
+}
+
+/* ===== Дисклеймер в Шаге 3 (Шаг 4 ТЗ prompt170926.md) ===== */
+
+.step-disclaimer {
+  margin-top:18px;
+  padding:10px 14px;
+  border-radius:10px;
+  background:rgba(var(--accent-rgb), .06);
+  border:1px dashed rgba(var(--accent-rgb), .25);
+  color:var(--text-soft);
+  font-size:11px;
+  line-height:1.55;
+}
+
+/* ===== Контрастность текста в аккордеонах (Шаг 5 ТЗ prompt170926.md) ===== */
+
+.legal-accordion > *:not(summary) {
+  color:var(--text);
+  font-size:13px;
+  line-height:1.6;
+}
+
+.legal-accordion h4 {
+  margin:14px 0 6px;
+  color:var(--accent-soft);
+  font-size:14px;
+  font-weight:700;
+}
+
+.legal-accordion p {
+  margin:0 0 10px;
+  color:var(--text);
+}
+
+.legal-accordion code {
+  background:rgba(255,255,255,.08);
+  padding:1px 6px;
+  border-radius:4px;
+  font-size:12px;
+  color:var(--accent-soft);
 }
 
 /* ===== Аккордеоны в подвале (раздел 4.2 ТЗ prompt160926.md) ===== */

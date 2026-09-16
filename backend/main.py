@@ -219,17 +219,31 @@ async def api_query(payload: QueryRequest, request: Request) -> Response:
 # АСИНХРОННАЯ ГЕНЕРАЦИЯ (раздел 2.1 ТЗ prompt160926.md)
 # ------------------------------------------------------------------------------
 def _run_pipeline_task(record: task_store.TaskRecord, query: str) -> dict:
-    """Обёртка пайплайна для фонового потока с прогрессом и guardrails."""
+    """Обёртка пайплайна для фонового потока с прогрессом и guardrails.
+
+    Использует стриминговый пайплайн (Шаг 1 ТЗ prompt170926.md): каждый
+    токен эталонного ответа LLM-2 публикуется как SSE-событие ``token``,
+    чтобы фронтенд мог рендерить «живую печать» в реальном времени.
+    """
     from backend.services import guardrails
 
     store_obj = task_store.get_task_store()
-    store_obj.update(record.task_id, stage="masking", progress=15)
-    record.push_event({"type": "progress", "stage": "masking", "progress": 15})
 
-    result = llm_chain.run_pipeline(query, with_stage2=True)
+    def _on_event(event: dict) -> None:
+        # Пробрасываем события стримингового пайплайна в ленту задачи.
+        record.push_event(event)
+        # Обновляем прогресс для polling-эндпоинта.
+        if event.get("type") == "progress":
+            store_obj.update(
+                record.task_id,
+                stage=event.get("stage", ""),
+                progress=event.get("progress", 0),
+            )
 
-    store_obj.update(record.task_id, stage="guardrails", progress=85)
-    record.push_event({"type": "progress", "stage": "guardrails", "progress": 85})
+    result = llm_chain.run_pipeline_streaming(query, on_event=_on_event)
+
+    store_obj.update(record.task_id, stage="guardrails", progress=90)
+    record.push_event({"type": "progress", "stage": "guardrails", "progress": 90})
 
     # Guardrails: проверка эталонного ответа (раздел 5.2 ТЗ).
     guard_report = guardrails.validate_consultation(
@@ -307,9 +321,16 @@ async def api_query_status(task_id: str) -> Response:
 
 @app.get("/api/query/stream/{task_id}")
 async def api_query_stream(task_id: str) -> Response:
-    """SSE-стриминг событий фоновой задачи (раздел 2.1 ТЗ).
+    """SSE-стриминг событий фоновой задачи (Шаг 1 ТЗ prompt170926.md).
 
     Формат: ``data: {json}\\n\\n``. Соединение закрывается после завершения задачи.
+    Прокидывает ВСЕ события стримингового пайплайна:
+        * ``started`` / ``progress`` — этапы генерации;
+        * ``token`` — фрагменты текста эталонного ответа (эффект «живой печати»);
+        * ``sources`` — веб-источники;
+        * ``meta`` — провайдеры и предупреждения;
+        * ``guardrails`` — отчёт валидации;
+        * ``completed`` / ``failed`` / ``cancelled`` — финальный статус.
     """
     status = task_store.get_task_status(task_id)
     if not status:
@@ -765,7 +786,7 @@ async def api_stats() -> dict[str, int]:
 
 @app.get("/api/legal")
 async def api_legal() -> dict[str, str]:
-    """Юридическая информация: дисклеймер и режим обработки данных."""
+    """Юридическая информация: дисклеймер и режим обработки данных (152-ФЗ)."""
     return {
         "disclaimer": AI_DISCLAIMER,
         "privacy": (
@@ -781,7 +802,29 @@ async def api_legal() -> dict[str, str]:
             "и документам защищен безопасным цифровым идентификатором вашего "
             "устройства."
         ),
-        "masking": "",
+        "masking": (
+            "### Режим Zero-Storage\n"
+            "ClickJurist работает в режиме **Zero-Storage** (No-Data-Retention): "
+            "тексты ваших обращений, фамилии, адреса, телефоны и иные персональные "
+            "данные **не сохраняются** на серверах. В базе данных хранятся только "
+            "псевдонимизированный идентификатор сессии (SHA-256 от IP + отпечатка "
+            "браузера + соли) и технические метрики.\n\n"
+            "### Локальный контур Stage 1 (маскировка ПДн)\n"
+            "До передачи запроса во внешнюю аналитическую модель (Gemini 2.5 Flash) "
+            "ваш текст проходит через **изолированный российский контур маскировки**: "
+            "имена заменяются на `[NAME_1]`, адреса — на `[ADDRESS_1]`, телефоны — на "
+            "`[PHONE_1]`, названия организаций — на `[ORG_1]`. Двухслойная защита: "
+            "LLM (YandexGPT/Ollama) + обязательная regex-страховка. Ни один фрагмент "
+            "ПДн не покидает пределы РФ.\n\n"
+            "### Защита сессий через JWT\n"
+            "Идентификация сессии реализована через **JWT-токен в HttpOnly, Secure, "
+            "SameSite=Strict cookie**. JavaScript не может прочитать такой токен "
+            "(защита от XSS), cookie не отправляется на сторонние сайты (защита от "
+            "CSRF). Сессия не привязана к IP-адресу — переключение Wi-Fi ↔ LTE не "
+            "разрывает авторизацию. Дополнительно токен привязан к хешу отпечатка "
+            "браузера: даже при перехвате cookie злоумышленник не сможет ей "
+            "воспользоваться без оригинального браузера."
+        ),
     }
 
 

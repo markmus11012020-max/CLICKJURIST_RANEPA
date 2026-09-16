@@ -21,3 +21,10 @@ Diff code only. No intros.
 Не пиши код в одном файле, создай понятную и максимально функциональную для пользователя архимтектуру проекта. 
 Заложи принцип масштабируемости в реализации проекта.
 
+# Context Management & Step Isolation
+- DO NOT carry over the entire conversation history or massive multi-file context between tasks.
+- Reset/clear your operational context upon successful completion of each individual step.
+- Focus strictly on the current task and only read the specific files required for the active step.
+- Prevents halllucinations, tokens bloat, and regression of previously fixed code.
+
+

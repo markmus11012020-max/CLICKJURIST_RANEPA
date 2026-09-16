@@ -487,3 +487,196 @@ def run_pipeline(raw_query: str, with_stage2: bool = True) -> PipelineResult:
 def run_consultation(raw_query: str) -> PipelineResult:
     """Удобная обёртка: обработка запроса с полным набором этапов."""
     return run_pipeline(raw_query, with_stage2=True)
+
+
+# ==============================================================================
+# СТРИМИНГОВЫЙ ПАЙПЛАЙН (Шаг 1 ТЗ prompt170926.md)
+# ==============================================================================
+def stream_reference(
+    masked_query: str,
+    analysis: str = "",
+    on_token=None,
+) -> tuple[str, str, bool]:
+    """Стриминг эталонного ответа LLM-2 (асессор) токен за токеном.
+
+    Использует :meth:`BaseProvider.stream_chat` если провайдер его поддерживает
+    (например, AITunnel). Если стриминг недоступен — автоматически откатывается
+    на обычный :func:`run_reference` и эмитит результат одним «токеном».
+
+    Args:
+        masked_query: обезличенный запрос клиента.
+        analysis: результат Stage 2 (правовой анализ + веб-фактчекинг).
+        on_token: callback ``callable(str)`` — вызывается на каждый фрагмент текста.
+
+    Returns:
+        ``(полный_текст, имя_провайдера, использован_ли_failover)``.
+    """
+    user_content = (
+        f"ВОПРОС ПОЛЬЗОВАТЕЛЯ:\n{masked_query}\n\n"
+        f"ЧЕРНОВИК ОТ LLM-1:\n{analysis}"
+    )
+    messages = [
+        {"role": "system", "content": prompts.PROMPT_LLM_2},
+        {"role": "user", "content": user_content},
+    ]
+
+    chain = fallback_chain()
+    seen: set[str] = set()
+    deduped_chain: list[str] = []
+    for name in chain:
+        if name not in seen:
+            seen.add(name)
+            deduped_chain.append(name)
+    chain = deduped_chain
+
+    errors: list[str] = []
+    for index, provider_name in enumerate(chain):
+        provider = get_provider(provider_name)
+        if not provider.is_configured():
+            errors.append(f"{provider_name}: не сконфигурирован")
+            continue
+        try:
+            accumulated: list[str] = []
+            for piece in provider.stream_chat(
+                messages=messages,
+                model=settings.MODEL_LLM_2 if provider_name == settings.PRIMARY_PROVIDER else None,
+                temperature=0.3,
+                max_tokens=settings.MAX_TOKENS_LLM_2,
+            ):
+                accumulated.append(piece)
+                if on_token is not None:
+                    try:
+                        on_token(piece)
+                    except Exception:  # noqa: BLE001
+                        pass
+            full_text = "".join(accumulated).strip()
+            if full_text:
+                return full_text, provider_name, index > 0
+            errors.append(f"{provider_name}: пустой стрим")
+        except LLMError as exc:
+            errors.append(f"{provider_name}: {exc}")
+            logger.warning(
+                "Стриминг недоступен, пробуем следующего провайдера",
+                extra={"provider": provider_name, "stage": "stream_reference"},
+            )
+            continue
+
+    raise LLMError("Стриминг LLM-2 недоступен: " + " | ".join(errors))
+
+
+def run_pipeline_streaming(
+    raw_query: str,
+    on_event=None,
+) -> PipelineResult:
+    """Полный мегапайплайн со стримингом финального ответа (Шаг 1 ТЗ prompt170926.md).
+
+    Эмитит события в callback ``on_event(event_dict)``:
+        * ``{"type": "started", "stage": "masking"}``
+        * ``{"type": "progress", "stage": "...", "progress": N}``
+        * ``{"type": "token", "text": "..."}`` — каждый фрагмент текста
+        * ``{"type": "sources", "sources": [...]}``
+        * ``{"type": "meta", "stage1_provider": "...", "stage2_provider": "..."}``
+        * ``{"type": "completed", "result": {...}}``
+        * ``{"type": "failed", "error": "..."}``
+
+    Returns:
+        :class:`PipelineResult` с финальным текстом.
+    """
+    started = time.time()
+    result = PipelineResult()
+
+    def emit(event: dict) -> None:
+        if on_event is not None:
+            try:
+                on_event(event)
+            except Exception:  # noqa: BLE001
+                pass
+
+    emit({"type": "started", "stage": "masking"})
+
+    # --- Шаг 1: маскировка ПДн ---
+    try:
+        mask = mask_query(raw_query)
+    except Exception as exc:  # noqa: BLE001
+        result.error = f"Ошибка контура маскировки: {exc}"
+        emit({"type": "failed", "error": result.error})
+        return result
+
+    result.mask = mask
+    result.anonymized = True
+    result.stage1_provider = mask.provider
+    result.warning = mask.warning
+    emit({"type": "progress", "stage": "masking_done", "progress": 20})
+
+    # --- Шаг 2: веб-фактчекинг ---
+    sources: list[Source] = []
+    try:
+        sources = gather_sources(mask.anonymized_summary or mask.masked_query)
+    except Exception:  # noqa: BLE001
+        logger.warning("Веб-фактчекинг недоступен, продолжаем без источников")
+        sources = []
+    emit({"type": "progress", "stage": "web_search_done", "progress": 35})
+    emit({"type": "sources", "sources": [{"title": s.title, "url": s.url} for s in sources]})
+
+    # --- Шаг 3: черновик LLM-1 (не стримим — это короткий черновик) ---
+    try:
+        draft, _, _ = run_draft(mask.masked_query, "")
+        result.draft = draft
+    except LLMError as exc:
+        result.error = f"LLM-1 (черновик) недоступен: {exc}"
+        emit({"type": "failed", "error": result.error})
+        return result
+    emit({"type": "progress", "stage": "draft_done", "progress": 50})
+
+    # --- Шаг 4: стриминг эталонного ответа LLM-2 ---
+    accumulated_tokens: list[str] = []
+
+    def _on_token(piece: str) -> None:
+        accumulated_tokens.append(piece)
+        emit({"type": "token", "text": piece})
+
+    try:
+        reference, provider_2, _ = stream_reference(
+            mask.masked_query, draft, on_token=_on_token
+        )
+        result.reference = reference
+        result.final = normalize_final(reference)
+        result.stage2_provider = provider_2
+    except LLMError as exc:
+        logger.warning("Стриминг LLM-2 упал, возвращаем черновик: %s", exc)
+        result.final = normalize_final(draft)
+        result.warning = (
+            "Эталонный ответ асессора недоступен: используется проверенный черновик LLM-1."
+        )
+
+    if not result.final.strip():
+        result.error = "Модели вернули пустой ответ. Переформулируйте запрос."
+        emit({"type": "failed", "error": result.error})
+        return result
+
+    result.sources = [{"title": s.title, "url": s.url} for s in sources]
+    result.citation_verified = verify_citations(result.final, sources)
+
+    if not result.citation_verified and not result.warning:
+        result.warning = (
+            "Ссылки на нормы права не подтверждены внешними источниками: "
+            "данные требуют дополнительной проверки по официальной редакции."
+        )
+
+    emit({
+        "type": "meta",
+        "stage1_provider": result.stage1_provider,
+        "stage2_provider": result.stage2_provider,
+        "warning": result.warning or "",
+    })
+    emit({"type": "progress", "stage": "done", "progress": 100})
+
+    logger.info(
+        "Стриминговый пайплайн завершён",
+        extra={
+            "stage": "pipeline_streaming",
+            "provider": result.stage2_provider,
+            "latency_ms": int((time.time() - started) * 1000),
+        },
+    )
+    return result
