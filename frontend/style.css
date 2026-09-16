@@ -111,6 +111,13 @@ main { max-width: var(--max-width); margin:0 auto; padding: 28px 22px 80px; }
 .result-body h1, .result-body h2, .result-body h3 { color:var(--text); margin-top:18px; margin-bottom:8px; }
 .result-body p { color:var(--text); }
 .result-body code { background:rgba(255,255,255,.08); padding:1px 6px; border-radius:4px; font-size:13px; }
+/* ===== Маркированные списки внутри результатов =====
+   Кастомный буллит (жирная точка 6px) вместо штатного disc — он аккуратнее
+   и визуально выровнен по одной вертикальной линии, независимо от длины
+   текста внутри <li>. */
+.result-body ul { list-style:none; padding:0; margin:6px 0 14px; }
+.result-body ul li { position:relative; padding-left:22px; margin:6px 0; color:var(--text); }
+.result-body ul li::before { content:""; position:absolute; left:4px; top:11px; width:6px; height:6px; border-radius:50%; background:var(--accent); box-shadow:0 0 0 2px rgba(var(--accent-rgb), .18); }
 .sources summary { cursor:pointer; color:var(--text-soft); font-size:14px; margin:12px 0; }
 .sources ul { list-style:none; padding:0; margin:0; }
 .sources li { padding:10px 12px; border:1px solid var(--line); border-radius:10px; margin-bottom:8px; background:rgba(0,0,0,.2); }

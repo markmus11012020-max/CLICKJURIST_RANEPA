@@ -53,14 +53,59 @@
   function markdownToHtml(text) {
     if (!text) return "";
     const escape = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    let html = escape(text);
-    html = html.replace(/^### (.+)$/gm, "<h3>$1</h3>");
-    html = html.replace(/^## (.+)$/gm, "<h2>$1</h2>");
-    html = html.replace(/^# (.+)$/gm, "<h1>$1</h1>");
+
+    // Блочную разметку (списки, заголовки, параграфы) разбираем построчно,
+    // чтобы маркеры "*"/"•" не «съедались» инлайн-форматированием и не
+    // превращались в одну сплошную строку.
+    const lines = escape(text).split("\n");
+    const bulletRe = /^[\*•]\s+(.+)$/;
+    const h3Re = /^###\s+(.+)$/;
+    const h2Re = /^##\s+(.+)$/;
+    const h1Re = /^#\s+(.+)$/;
+
+    const blocks = [];
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i];
+      if (bulletRe.test(line)) {
+        const items = [];
+        while (i < lines.length && bulletRe.test(lines[i])) {
+          items.push("<li>" + lines[i].replace(bulletRe, "$1") + "</li>");
+          i++;
+        }
+        blocks.push("<ul>" + items.join("") + "</ul>");
+        continue;
+      }
+      const h3 = line.match(h3Re);
+      if (h3) { blocks.push("<h3>" + h3[1] + "</h3>"); i++; continue; }
+      const h2 = line.match(h2Re);
+      if (h2) { blocks.push("<h2>" + h2[1] + "</h2>"); i++; continue; }
+      const h1 = line.match(h1Re);
+      if (h1) { blocks.push("<h1>" + h1[1] + "</h1>"); i++; continue; }
+      if (line.trim() === "") { i++; continue; }
+      // Обычный текстовый блок: собираем подряд идущие непустые строки,
+      // не начинающиеся с маркера списка/заголовка. Одиночные \n → <br>.
+      const paraLines = [line];
+      i++;
+      while (
+        i < lines.length &&
+        lines[i].trim() !== "" &&
+        !bulletRe.test(lines[i]) &&
+        !h3Re.test(lines[i]) &&
+        !h2Re.test(lines[i]) &&
+        !h1Re.test(lines[i])
+      ) {
+        paraLines.push(lines[i]);
+        i++;
+      }
+      blocks.push("<p>" + paraLines.join("<br>") + "</p>");
+    }
+
+    let html = blocks.join("");
+    // Инлайн-форматирование — после блочной разметки, чтобы ** внутри <li>
+    // корректно превращались в <strong>, а не «ломали» парсер списков.
     html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
     html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
-    html = html.replace(/\n{2,}/g, "</p><p>");
-    html = "<p>" + html + "</p>";
     return html;
   }
 

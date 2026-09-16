@@ -171,7 +171,7 @@ def sources_as_text(sources: list[Source], mask: MaskResult) -> str:
 
     if mask.risk_notes:
         lines.append("")
-        lines.append(f"Замечание контура обезличивания: {mask.risk_notes}")
+        lines.append(f"Замечание контура маскировки данных: {mask.risk_notes}")
 
     return "\n".join(lines)
 

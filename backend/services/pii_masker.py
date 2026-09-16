@@ -370,7 +370,7 @@ def mask_query(raw_query: str) -> MaskResult:
     if not entities and not llm_used:
         risk_notes = risk_notes or (
             "Персональные данные по формальным признакам не обнаружены; "
-            "выполнен обезличивающий проход регулярными выражениями."
+            "выполнен маскирующий проход регулярными выражениями."
         )
 
     return MaskResult(
