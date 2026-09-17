@@ -8,4 +8,5 @@ __all__ = [
     "providers",
     "pdf_generator",
     "robokassa",
+    "legal_category",
 ]

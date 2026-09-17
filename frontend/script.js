@@ -208,6 +208,66 @@
   const DOC_TYPE_DEFAULT = "complaint";
   const stateDocType = { value: DOC_TYPE_DEFAULT };
 
+  // Карта шаблонов документов, которые НЕ применимы к B2B-кейсам
+  // (Шаг 1 ТЗ prompt170926.md). Для B2B блокируются:
+  //   - «Жалоба» (admin-complaint): нет административного порядка обжалования
+  //     для корпоративных споров, иск подаётся сразу в арбитраж;
+  //   - «Отмена судебного приказа» (court_order_cancellation): судебный приказ
+  //     выдаётся только по бесспорным B2C-требованиям (ст. 122 ГПК РФ).
+  const B2B_BLOCKED_DOC_TYPES = new Set([
+    "complaint",
+    "court_order_cancellation",
+  ]);
+
+  /**
+   * Применить правовую категорию, полученную из Шага 1, к кнопкам Шага 3.
+   * Если категория = "b2b", кнопки из B2B_BLOCKED_DOC_TYPES получают
+   * атрибут ``disabled``, пониженную прозрачность (0.4) и
+   * ``pointer-events: none``. Для "b2c" (или неизвестной категории) —
+   * все кнопки снова активны.
+   *
+   * Дополнительно: если активная в данный момент кнопка оказалась
+   * заблокированной, выбор переключается на первую доступную.
+   */
+  function applyLegalCategory(category) {
+    const isB2B = category === "b2b";
+    const buttons = document.querySelectorAll(".doc-type-btn");
+    let firstAvailable = null;
+    buttons.forEach((btn) => {
+      const type = btn.getAttribute("data-doc-type") || "";
+      const blocked = isB2B && B2B_BLOCKED_DOC_TYPES.has(type);
+      if (blocked) {
+        btn.disabled = true;
+        btn.setAttribute("aria-disabled", "true");
+        btn.style.opacity = "0.4";
+        btn.style.pointerEvents = "none";
+        btn.title = "Этот шаблон не применим для корпоративного (B2B) спора";
+        // Снимаем визуальный «выбранный» стиль, если он был активен.
+        btn.classList.remove("primary");
+        btn.classList.add("ghost");
+        btn.setAttribute("aria-pressed", "false");
+      } else {
+        btn.disabled = false;
+        btn.removeAttribute("aria-disabled");
+        btn.style.opacity = "";
+        btn.style.pointerEvents = "";
+        btn.removeAttribute("title");
+        if (!firstAvailable) firstAvailable = type;
+      }
+    });
+    // Если текущий выбор оказался заблокирован — переключаемся на
+    // первый доступный шаблон, чтобы состояние stateDocType не
+    // указывало на отключённую кнопку.
+    if (
+      isB2B &&
+      stateDocType.value &&
+      B2B_BLOCKED_DOC_TYPES.has(stateDocType.value) &&
+      firstAvailable
+    ) {
+      setActiveDocType(firstAvailable);
+    }
+  }
+
   function setActiveDocType(value) {
     stateDocType.value = value;
     document.querySelectorAll(".doc-type-btn").forEach((btn) => {
@@ -411,6 +471,11 @@
           show($("querySources")); if (!(sources || []).length) hide($("querySources"));
           hideSkeletonAndTimer();
           show($("queryResult"));
+          // Правовая категория из Шага 1: блокируем нерелевантные шаблоны Шага 3
+          // для B2B-кейсов (Жалоба, Отмена судебного приказа).
+          applyLegalCategory(
+            (payload.result && payload.result.legal_category) || null
+          );
           setStatus($("queryStatus"), "Готово ✓", "success");
           toast("Консультация получена", "success");
           loadSession();
@@ -666,6 +731,9 @@
     });
     show($("querySources")); if (!(result.sources || []).length) hide($("querySources"));
     show($("queryResult"));
+    // Правовая категория из Шага 1: блокируем нерелевантные шаблоны Шага 3
+    // (для B2B — «Жалоба» и «Отмена судебного приказа»).
+    applyLegalCategory(result.legal_category || null);
   }
 
   async function runChecklist() {
@@ -964,6 +1032,8 @@
 
     // 9. Сбросить выбор типа документа к дефолту (Шаг 3).
     setActiveDocType(DOC_TYPE_DEFAULT);
+    // 9.1. Снять B2B-блокировку с кнопок Шага 3 (если активна).
+    applyLegalCategory(null);
 
     // 10. Закрыть платёжное окно, если оно открыто.
     closePaywall();
@@ -994,8 +1064,17 @@
     // единожды, чтобы не дублировать клики.
     document.querySelectorAll(".doc-type-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
+        // Защита №1: HTML-уровень. Если кнопка disabled — браузер сам
+        // не пропустит клик, но дополнительно проверяем явно на случай
+        // программной переинициализации.
+        if (btn.disabled || btn.getAttribute("aria-disabled") === "true") return;
         const value = btn.getAttribute("data-doc-type");
-        if (value) setActiveDocType(value);
+        if (!value) return;
+        // Защита №2: повторно проверяем по списку заблокированных типов,
+        // чтобы клик не переключил stateDocType.value на отключённый тип
+        // (например, через DevTools, снимающий атрибут disabled).
+        if (B2B_BLOCKED_DOC_TYPES.has(value)) return;
+        setActiveDocType(value);
       });
     });
     // Быстрые пресеты (раздел 4.1 ТЗ prompt160926.md).

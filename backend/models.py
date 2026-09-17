@@ -14,6 +14,7 @@ ServiceCode = Literal[
     "package_premium",
 ]
 DocType = Literal["complaint", "claim", "lawsuit", "court_order_cancellation"]
+LegalCategory = Literal["b2b", "b2c"]
 
 
 class QueryRequest(BaseModel):
@@ -54,6 +55,10 @@ class GenerateResponse(BaseModel):
     stage2_provider: str | None = None
     warning: str | None = None
     error: str | None = None
+    # Классификатор правовой категории запроса (Шаг 1 ТЗ prompt170926.md).
+    # Используется фронтендом для блокировки нерелевантных шаблонов
+    # документов в Шаге 3 (Жалоба / Отмена судебного приказа для B2B).
+    legal_category: LegalCategory | None = None
 
 
 class ChecklistResponse(BaseModel):

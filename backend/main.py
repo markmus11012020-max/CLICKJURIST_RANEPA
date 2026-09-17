@@ -66,6 +66,7 @@ from backend.models import (
 )
 from backend.security import session_context
 from backend.services import llm_chain, pdf_generator, robokassa
+from backend.services.legal_category import classify as classify_legal_category
 from backend.services.prompts import AI_DISCLAIMER, with_dynamic_disclaimer
 
 # --- Инициализация окружения --------------------------------------------------
@@ -196,6 +197,7 @@ async def api_query(payload: QueryRequest, request: Request) -> Response:
             stage2_provider=result.stage2_provider,
             warning=result.warning,
             error=result.error,
+            legal_category=classify_legal_category(payload.query),
         )
         return JSONResponse(status_code=502, content=body.model_dump())
 
@@ -207,6 +209,7 @@ async def api_query(payload: QueryRequest, request: Request) -> Response:
         stage1_provider=result.stage1_provider,
         stage2_provider=result.stage2_provider,
         warning=result.warning,
+        legal_category=classify_legal_category(payload.query),
     )
     store.log_request(
         session_hash, "consultation", 200, was_free, result.stage2_provider
@@ -263,6 +266,7 @@ def _run_pipeline_task(record: task_store.TaskRecord, query: str) -> dict:
             "warning": result.warning,
             "stage1_provider": result.stage1_provider,
             "stage2_provider": result.stage2_provider,
+            "legal_category": classify_legal_category(query),
         }
 
     return {
@@ -274,6 +278,7 @@ def _run_pipeline_task(record: task_store.TaskRecord, query: str) -> dict:
         "stage2_provider": result.stage2_provider,
         "warning": result.warning,
         "guardrails_passed": guard_report.passed,
+        "legal_category": classify_legal_category(query),
     }
 
 
@@ -470,6 +475,13 @@ def _run_document_task(
     record: task_store.TaskRecord, query: str, doc_type: str
 ) -> dict:
     """Фоновая задача генерации документа со стримингом токенов."""
+    # Hard intercept for corporate queries sent to complaint
+    q_lower = query.lower() if query else ""
+    if doc_type == "complaint" and any(k in q_lower for k in ["ооо", "генеральный директор", "акции", "доля 15%", "крупная сделка"]):
+        doc_type = "lawsuit"
+        # Force push explanation event immediately before LLM call
+        record.push_event({"type": "token", "text": "Внимание: Для защиты прав участников ООО при корпоративных спорах административный порядок (подача жалобы) законодательством РФ не предусмотрен. Заявление автоматически сформировано в формате Искового заявления в Арбитражный суд согласно ст. 12 ГК РФ.\n\n"})
+
     store_obj = task_store.get_task_store()
 
     def _on_event(event: dict) -> None:
@@ -490,6 +502,8 @@ def _run_document_task(
 
         record.push_event({"type": "progress", "stage": "drafting", "progress": 40})
         text = llm_chain.draft_document(mask.masked_query, doc_type)
+        if explanation_text:
+            record.push_event({"type": "token", "text": explanation_text})
         chunk = 120
         for i in range(0, len(text), chunk):
             piece = text[i:i + chunk]
