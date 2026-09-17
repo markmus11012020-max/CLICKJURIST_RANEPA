@@ -299,9 +299,20 @@ def normalize_final(text: str) -> str:
     return cleaned.strip()
 
 
-def attach_disclaimer(text: str) -> str:
-    """Добавить обязательный дисклеймер о применении генеративного ИИ."""
+def attach_disclaimer(text: str, *, for_document: bool = False) -> str:
+    """Добавить обязательный дисклеймер о применении генеративного ИИ.
+
+    Args:
+        text: исходный текст ответа.
+        for_document: если ``True`` — дисклеймер НЕ добавляется, потому что
+            текст идёт в официальный документ (иск / претензия / жалоба),
+            который подаётся в суд или гос. орган. Дисклеймер остаётся
+            только для консультаций и чек-листов, отображаемых в UI.
+    """
     if not text:
+        return text
+    if for_document:
+        # Официальные документы не должны содержать служебных пометок сервиса.
         return text
     if prompts.AI_DISCLAIMER in text:
         return text

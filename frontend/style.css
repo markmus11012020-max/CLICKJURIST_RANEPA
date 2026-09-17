@@ -399,6 +399,34 @@ main { max-width: var(--max-width); margin:0 auto; padding: 28px 22px 80px; }
 
 .btn.ghost { background:transparent; border-color:var(--line-strong); }
 
+/* Secondary — приглушённая «шёлковая» кнопка на тёмно-синем фоне Slate.
+   Тонкая рамка в акцентном бирюзовом + прозрачная подложка: остаётся
+   видимой, но уступает по визуальному весу яркой .btn.primary. */
+.btn.btn-secondary {
+  background: rgba(255, 255, 255, .04);
+  border: 1px solid rgba(var(--accent-rgb), .35);
+  color: var(--text-soft);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .02);
+}
+.btn.btn-secondary:hover:not(:disabled) {
+  background: rgba(var(--accent-rgb), .12);
+  border-color: rgba(var(--accent-rgb), .6);
+  color: var(--text);
+}
+.btn.btn-secondary:active:not(:disabled) {
+  background: rgba(var(--accent-rgb), .18);
+  transform: translateY(0);
+}
+
+/* Кнопка «Начать новую консультацию» — якорный сброс сессии в Шаге 1.
+   Чуть компактнее основной CTA, чтобы не конкурировать с ним визуально. */
+#resetAppBtn {
+  padding: 11px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: .01em;
+}
+
 
 
 .btn.ghost:hover:not(:disabled) { background:rgba(var(--accent-rgb), .08); border-color:rgba(var(--accent-rgb), .6); }
@@ -608,11 +636,11 @@ main { max-width: var(--max-width); margin:0 auto; padding: 28px 22px 80px; }
 
 
 
-.toast { position:fixed; bottom:24px; right:24px; background:var(--bg-2); border:1px solid var(--line-strong); border-radius:12px; padding:12px 18px; font-size:14px; color:var(--text); box-shadow:var(--shadow); z-index:70; opacity:0; pointer-events:none; transition: opacity .2s ease, transform .2s ease; transform: translateY(20px); max-width:360px; }
+.toast { position:fixed; bottom:48px; right:48px; background:var(--bg-2); border:2px solid var(--line-strong); border-radius:24px; padding:24px 36px; font-size:1.75rem; line-height:1.4; color:var(--text); box-shadow:var(--shadow); z-index:70; opacity:0; pointer-events:none; transition: opacity .2s ease, transform .2s ease; transform: translateY(20px) scale(2); transform-origin: bottom right; max-width:720px; }
 
 
 
-.toast.show { opacity:1; transform: translateY(0); }
+.toast.show { opacity:1; transform: translateY(0) scale(2); transform-origin: bottom right; }
 
 
 
@@ -739,7 +767,7 @@ footer { text-align:center; padding:40px 22px; color:var(--text-mute); font-size
 
 
 
-  .toast { font-size:13px; padding:10px 14px; max-width:280px; }
+  .toast { font-size:1.5rem; padding:20px 28px; max-width:560px; bottom:32px; right:32px; border-radius:20px; }
 
 
 

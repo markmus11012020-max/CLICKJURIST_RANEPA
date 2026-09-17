@@ -28,6 +28,15 @@ def test_attach_disclaimer_appends_text():
     assert text in out
 
 
+def test_attach_disclaimer_skipped_for_documents():
+    """Для официальных документов дисклеймер НЕ добавляется."""
+    text = "Это текст искового заявления."
+    out = attach_disclaimer(text, for_document=True)
+    assert "Генеративный ИИ" not in out
+    assert "ClickJurist" not in out
+    assert out == text
+
+
 def test_run_pipeline_offline_returns_error_without_providers():
     """Без API-ключей пайплайн возвращает структурированную ошибку."""
     result = run_pipeline("Соседи шумят ночью", with_stage2=True)

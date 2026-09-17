@@ -417,7 +417,8 @@ async def api_document(payload: DocumentRequest, request: Request) -> Response:
 
     store.log_request(session_hash, "document", 200, was_free)
     body = DocumentResponse(
-        document=llm_chain.attach_disclaimer(document), doc_type=payload.doc_type
+        document=llm_chain.attach_disclaimer(document, for_document=True),
+        doc_type=payload.doc_type,
     )
     response = JSONResponse(content=body.model_dump())
     response.headers["X-Session-Id"] = session_id
@@ -495,7 +496,7 @@ def _run_document_task(
             record.push_event({"type": "token", "text": piece})
 
         record.push_event({"type": "progress", "stage": "done", "progress": 100})
-        final_text = llm_chain.attach_disclaimer(text)
+        final_text = llm_chain.attach_disclaimer(text, for_document=True)
         return {"document": final_text, "doc_type": doc_type}
     except Exception as exc:  # noqa: BLE001
         logger.exception("Фоновая задача документа упала")
@@ -591,12 +592,7 @@ async def api_pdf(payload: ChecklistRequest, request: Request) -> Response:
         pdf_bytes = await asyncio.wait_for(
             run_in_threadpool(
                 pdf_generator.build_pdf,
-                title="Юридическая консультация ClickJurist",
                 content_markup=payload.final_answer,
-                subtitle=(
-                    f"Документ сформирован ClickJurist • "
-                    f"сессия {session_id[:8]}"
-                ),
             ),
             timeout=PDF_TIMEOUT_S,
         )
@@ -636,9 +632,8 @@ async def api_pdf(payload: ChecklistRequest, request: Request) -> Response:
         media_type="application/pdf",
         headers={
             "Content-Disposition": (
-                f'attachment; filename="{pdf_generator.filename_for("consultation")}"'
+                f'attachment; filename="{pdf_generator.filename_for("document")}"'
             ),
-            "X-Session-Id": session_id,
         },
     )
 
@@ -770,7 +765,7 @@ async def api_package(payload: PackageRequest, request: Request) -> Response:
             try:
                 document = llm_chain.draft_document(mask.masked_query, "lawsuit")
                 body.document = with_dynamic_disclaimer(
-                    llm_chain.attach_disclaimer(document)
+                    llm_chain.attach_disclaimer(document, for_document=True)
                 )
             except Exception as exc:  # noqa: BLE001
                 logger.warning("Пакет: документ не сгенерирован: %s", exc)

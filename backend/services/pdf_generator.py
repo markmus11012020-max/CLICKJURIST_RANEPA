@@ -1,4 +1,4 @@
-"""Генерация PDF-отчётов ClickJurist Production.
+"""Генерация чистых PDF-документов для подачи в суды и гос. органы.
 
 Ключевая задача — корректная кириллица. Шрифт подбирается в таком порядке:
     1. ``PDF_FONT_PATH`` из настроек (явный путь имеет приоритет);
@@ -8,20 +8,78 @@
 Если ни один шрифт не найден, документ всё равно формируется: используется
 встроенный Helvetica (латиница), а в текст добавляется предупреждение —
 это лучше, чем упасть с 500-й ошибкой.
+
+Документ формируется как чистый бланк без брендинга, заголовков сервиса,
+идентификаторов сессий и дисклеймеров ИИ. В правом верхнем углу размещается
+«шапка» с пустыми полями (ФИО, адрес, телефон), которые пользователь
+заполняет от руки перед подачей.
+
+Перед рендерингом текст документа проходит через ``_sanitize_content``,
+которая удаляет любые следы брендинга сервиса (включая латинское
+написание «ClickJurist»), дисклеймеры ИИ, заголовки/футеры и заменяет
+плейсхолдеры персональных данных (``[ORG_1]``, ``[SUM_1]`` и т. п.)
+на пустые линии для ручного заполнения.
 """
 from __future__ import annotations
 
 import io
 import logging
 import os
+import re
 import time
 from dataclasses import dataclass
 from datetime import datetime
 
-from backend.config import PROJECT_ROOT, settings
-from backend.services import prompts
+from reportlab.lib.colors import black
 
-logger = logging.getLogger("clickjurist.pdf")
+from backend.config import PROJECT_ROOT, settings
+
+logger = logging.getLogger("кликюрист.pdf")
+
+# Длинная пустая линия для ручного заполнения (≈ 27 символов подчёркивания).
+_BLANK_LINE = "_" * 27
+
+# Регулярные выражения для очистки текста документа.
+# Латинское написание бренда в любом регистре и с любыми разделителями —
+# конвертируется в кириллическое «КликЮрист».
+_RE_BRAND_LATIN = re.compile(
+    r"\bclick[\s\-_]?jurist\b",
+    re.IGNORECASE,
+)
+# Каноническое кириллическое написание бренда (используется при замене).
+_CYRILLIC_BRAND = "КликЮрист"
+# Заголовок сервиса.
+_RE_HEADER = re.compile(
+    r"^\s*Юридическая\s+консультация\s+ClickJurist\s*$",
+    re.IGNORECASE | re.MULTILINE,
+)
+# Футер с идентификатором сессии.
+_RE_FOOTER = re.compile(
+    r"Документ\s+сформирован\s+ClickJurist\s*[•·\-\u2022]?\s*"
+    r"(?:сессия|session)\s*[:#]?\s*[A-Za-z0-9]+",
+    re.IGNORECASE,
+)
+# Дисклеймер ИИ (две строки).
+_RE_DISCLAIMER = re.compile(
+    r"Генеративный\s+ИИ\s+может\s+ошибаться.*?"
+    r"(?:оптимизации\s+рутинных\s+операций|оптимизации\s+рутины)\.?",
+    re.IGNORECASE | re.DOTALL,
+)
+# Горизонтальный разделитель markdown, который обычно предшествует дисклеймеру.
+_RE_HR = re.compile(r"^\s*---\s*$", re.MULTILINE)
+# Плейсхолдеры вида [ORG_1], [SUM_1], [NAME_1] и т. п.
+_RE_PLACEHOLDER = re.compile(
+    r"\[(?:ORG|SUM|NAME|ADDRESS|PHONE|EMAIL|PASSPORT|INN|BANK|DATE|CASE)_(\d+)\]"
+)
+# Конструкция «ООО [ORG_1]» / «ООО «[ORG_1]»» и т. п.
+_RE_OOO_PLACEHOLDER = re.compile(
+    r"ООО\s+[\"«]?\[ORG_\d+\][\"»]?",
+    re.IGNORECASE,
+)
+# Любые одиночные плейсхолдеры в кавычках/ёлочках.
+_RE_QUOTED_PLACEHOLDER = re.compile(
+    r"[\"«]\[(?:ORG|SUM|NAME|ADDRESS|PHONE|EMAIL|PASSPORT|INN|BANK|DATE|CASE)_\d+\][\"»]"
+)
 
 # Кандидаты на шрифты с поддержкой кириллицы (обычный и жирный начерк)
 _REGULAR_CANDIDATES: tuple[str, ...] = (
@@ -128,14 +186,6 @@ def _register_styles(fonts: FontSet) -> dict[str, object]:
             bold_name = regular_name
 
     return {
-        "title": ParagraphStyle(
-            "CjTitle",
-            fontName=bold_name,
-            fontSize=16,
-            leading=20,
-            spaceAfter=8 * mm,
-            alignment=1,
-        ),
         "heading": ParagraphStyle(
             "CjHeading",
             fontName=bold_name,
@@ -147,17 +197,23 @@ def _register_styles(fonts: FontSet) -> dict[str, object]:
         "body": ParagraphStyle(
             "CjBody",
             fontName=regular_name,
-            fontSize=10.5,
+            fontSize=11,
             leading=15,
             spaceAfter=2 * mm,
         ),
-        "small": ParagraphStyle(
-            "CjSmall",
+        "shapka_label": ParagraphStyle(
+            "CjShapkaLabel",
             fontName=regular_name,
-            fontSize=8,
-            leading=11,
-            textColor="#555555",
-            spaceBefore=4 * mm,
+            fontSize=9,
+            leading=12,
+            textColor=black,
+        ),
+        "shapka_line": ParagraphStyle(
+            "CjShapkaLine",
+            fontName=regular_name,
+            fontSize=11,
+            leading=18,
+            textColor=black,
         ),
     }
 
@@ -169,6 +225,63 @@ def _escape_markup(text: str) -> str:
         .replace("<", "&lt;")
         .replace(">", "&gt;")
     )
+
+
+def _sanitize_content(markup: str) -> str:
+    """Очистить текст документа от брендинга, дисклеймеров и плейсхолдеров.
+
+    Удаляет:
+        - латинское и кириллическое написание бренда сервиса;
+        - заголовок «Юридическая консультация ClickJurist»;
+        - футер «Документ сформирован ClickJurist • сессия …»;
+        - двухстрочный дисклеймер «Генеративный ИИ может ошибаться…»;
+        - горизонтальные разделители ``---``, которые обычно предшествуют
+          дисклеймеру.
+
+    Заменяет:
+        - конструкции «ООО [ORG_1]», «ООО «[ORG_1]»» и т. п. — на пустую
+          линию ``___________________________``;
+        - любые одиночные плейсхолдеры ``[ORG_1]``, ``[SUM_1]`` и т. п.
+          (в кавычках и без) — на ту же пустую линию.
+
+    Args:
+        markup: исходный текст документа (простой markdown).
+
+    Returns:
+        Очищенный текст, готовый для рендеринга в PDF.
+    """
+    if not markup:
+        return ""
+
+    text = markup
+
+    # 1. Удаляем дисклеймер ИИ целиком (вместе с предшествующим разделителем).
+    text = _RE_DISCLAIMER.sub("", text)
+    text = _RE_HR.sub("", text)
+
+    # 2. Удаляем заголовок и футер сервиса.
+    text = _RE_HEADER.sub("", text)
+    text = _RE_FOOTER.sub("", text)
+
+    # 3. Конвертируем латинское написание бренда в кириллическое.
+    #    Кириллическое написание оставляем как есть.
+    text = _RE_BRAND_LATIN.sub(_CYRILLIC_BRAND, text)
+
+    # 4. Заменяем плейсхолдеры на пустые линии.
+    #    Сначала «ООО [ORG_1]» и подобные конструкции — чтобы не осталось
+    #    голого «ООО ___________________________» с висящим организационным
+    #    префиксом.
+    text = _RE_OOO_PLACEHOLDER.sub(_BLANK_LINE, text)
+    text = _RE_QUOTED_PLACEHOLDER.sub(_BLANK_LINE, text)
+    text = _RE_PLACEHOLDER.sub(_BLANK_LINE, text)
+
+    # 5. Схлопываем лишние пустые строки, образовавшиеся после удаления блоков.
+    text = re.sub(r"\n{3,}", "\n\n", text)
+
+    # 6. Убираем висящие пробелы в конце строк.
+    text = "\n".join(line.rstrip() for line in text.split("\n"))
+
+    return text.strip()
 
 
 def _markdown_to_flowables(markup: str, styles: dict[str, object]) -> list:
@@ -201,19 +314,68 @@ def _markdown_to_flowables(markup: str, styles: dict[str, object]) -> list:
     return flowables
 
 
+def _build_shapka_flowables(styles: dict[str, object]) -> list:
+    """Сформировать «шапку» документа — пустые поля для ручного заполнения.
+
+    Поля размещаются в правом верхнем углу листа:
+        - ФИО заявителя
+        - адрес проживания
+        - контактный телефон
+
+    Пользователь заполняет их от руки перед подачей в суд или гос. орган.
+    Никаких подписей сервиса, логотипов или идентификаторов сессии.
+    """
+    from reportlab.lib.units import mm
+    from reportlab.platypus import Paragraph, Spacer, Table, TableStyle
+
+    # Ширина правой колонки «шапки» — около 85 мм (≈ 1/3 ширины A4 с полями).
+    shapka_width = 85 * mm
+
+    # Каждая строка: подпись поля + пустая линия для заполнения от руки.
+    rows = [
+        [Paragraph(_escape_markup("ФИО:"), styles["shapka_label"]),
+         Paragraph(_escape_markup("________________________________"), styles["shapka_line"])],
+        [Paragraph(_escape_markup("Адрес:"), styles["shapka_label"]),
+         Paragraph(_escape_markup("________________________________"), styles["shapka_line"])],
+        [Paragraph(_escape_markup("Телефон:"), styles["shapka_label"]),
+         Paragraph(_escape_markup("________________________________"), styles["shapka_line"])],
+    ]
+
+    table = Table(
+        rows,
+        colWidths=[shapka_width * 0.30, shapka_width * 0.70],
+        hAlign="RIGHT",
+    )
+    table.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "BOTTOM"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                ("TOPPADDING", (0, 0), (-1, -1), 1),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ]
+        )
+    )
+
+    return [table, Spacer(1, 6 * mm)]
+
+
 def build_pdf(
-    title: str,
     content_markup: str,
-    subtitle: str = "",
-    include_disclaimer: bool = True,
+    include_shapka: bool = True,
 ) -> bytes:
-    """Сформировать PDF-файл и вернуть его содержимое в виде байтов.
+    """Сформировать чистый PDF-файл и вернуть его содержимое в виде байтов.
+
+    Документ формируется как чистый бланк без брендинга, заголовков сервиса,
+    идентификаторов сессий и дисклеймеров ИИ. В правом верхнем углу
+    размещается «шапка» с пустыми полями (ФИО, адрес, телефон), которые
+    пользователь заполняет от руки перед подачей.
 
     Args:
-        title: заголовок документа (например, «Юридическая консультация»).
-        content_markup: основной текст (простой markdown).
-        subtitle: подзаголовок (например, дата и идентификатор сессии).
-        include_disclaimer: добавлять ли дисклеймер об ошибках ИИ.
+        content_markup: основной текст документа (простой markdown).
+        include_shapka: добавлять ли «шапку» с пустыми полями в правом
+            верхнем углу (по умолчанию — да).
 
     Returns:
         Байты готового PDF-документа.
@@ -224,10 +386,10 @@ def build_pdf(
     """
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import mm
-    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+    from reportlab.platypus import SimpleDocTemplate
 
     started = time.perf_counter()
-    logger.info("[PDF] Старт сборки документа (title=%r)", title)
+    logger.info("[PDF] Старт сборки чистого документа")
     try:
         fonts = resolve_fonts()
         # Строгая проверка: если заявлен кириллический шрифт, а файла по
@@ -259,35 +421,24 @@ def build_pdf(
             rightMargin=15 * mm,
             topMargin=18 * mm,
             bottomMargin=18 * mm,
-            title=title,
-            author="ClickJurist",
+            title="Документ",
+            author="",
+            subject="",
+            creator="",
         )
 
-        flowables: list = [Paragraph(_escape_markup(title), styles["title"])]
-        stamp = datetime.now().strftime("%d.%m.%Y %H:%M")
-        meta = subtitle or f"Сформировано сервисом ClickJurist — {stamp}"
-        flowables.append(Paragraph(_escape_markup(meta), styles["small"]))
-        flowables.append(Spacer(1, 4 * mm))
-        flowables.extend(_markdown_to_flowables(content_markup, styles))
+        flowables: list = []
+        if include_shapka:
+            flowables.extend(_build_shapka_flowables(styles))
+        # Очищаем текст от брендинга, дисклеймеров и плейсхолдеров ПДн
+        # перед рендерингом — это гарантирует, что в PDF не попадёт ни
+        # латинское «ClickJurist», ни «Генеративный ИИ…», ни «[ORG_1]».
+        sanitized_markup = _sanitize_content(content_markup)
+        flowables.extend(_markdown_to_flowables(sanitized_markup, styles))
         logger.info(
-            "[PDF] Текст документа подготовлен для Canvas (%d flowables)",
+            "[PDF] Текст документа подготовлен для Canvas (%s flowables)",
             len(flowables),
         )
-
-        if not fonts.cyrillic:
-            flowables.append(
-                Paragraph(
-                    "Внимание: кириллический шрифт не найден, часть символов "
-                    "может отображаться некорректно. Укажите PDF_FONT_PATH "
-                    "в .env.",
-                    styles["small"],
-                )
-            )
-
-        if include_disclaimer:
-            flowables.append(
-                Paragraph(_escape_markup(prompts.AI_DISCLAIMER), styles["small"])
-            )
 
         document.build(flowables)
         elapsed_ms = int((time.perf_counter() - started) * 1000)
@@ -300,7 +451,7 @@ def build_pdf(
     except Exception as exc:  # noqa: BLE001
         elapsed_ms = int((time.perf_counter() - started) * 1000)
         logger.error(
-            "[PDF] СБОЙ СБОРКИ через %d мс: %s: %s",
+            "[PDF] СБОЙ СБОРКИ через %s мс: %s: %s",
             elapsed_ms, type(exc).__name__, exc,
         )
         # Поднимаем дальше — пусть эндпоинт вернёт 500 за миллисекунды,
@@ -312,4 +463,4 @@ def filename_for(service: str) -> str:
     """Сформировать безопасное имя PDF-файла для скачивания."""
     stamp = datetime.now().strftime("%Y%m%d-%H%M")
     safe_service = "".join(ch for ch in service if ch.isalnum() or ch in "-_") or "doc"
-    return f"clickjurist-{safe_service}-{stamp}.pdf"
+    return f"document-{safe_service}-{stamp}.pdf"

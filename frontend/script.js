@@ -669,11 +669,20 @@
   }
 
   async function runChecklist() {
-    const query = ($("queryInput").value || "").trim();
-    if (!query && !state.lastAnswer) {
+    const queryInput = document.getElementById("queryInput");
+    // Scenario A: пустое поле ввода — блокируем запуск и подсказываем, что делать.
+    if (!queryInput || !queryInput.value.trim()) {
       toast("Для корректной работы сервиса необходимо сначала заполнить поле описания ситуации или перейти к шагу «Получить консультацию».", "error");
       return;
     }
+    // Scenario B: текст есть, но Шаг 1 ещё не выполнен — без lastAnswer чек-лист
+    // не имеет смысла, поэтому останавливаем выполнение и просим сначала
+    // получить консультацию.
+    if (!state.lastAnswer || !state.lastAnswer.trim()) {
+      toast("Для корректной работы сервиса необходимо сначала перейти к шагу «Получить консультацию».", "error");
+      return;
+    }
+    const query = queryInput.value.trim();
     setStatus($("checklistStatus"), "Ставим задачу в очередь…");
     const btn = $("runChecklistBtn"); btn.disabled = true;
     showStepSkeletonAndTimer("checklist");
@@ -717,8 +726,20 @@
   }
 
   async function runDocument() {
-    const query = ($("queryInput").value || "").trim();
-    if (query.length < 3) { toast("Опишите ситуацию подробнее", "error"); return; }
+    const queryInput = document.getElementById("queryInput");
+    // Scenario A: пустое поле ввода — блокируем запуск и подсказываем, что делать.
+    if (!queryInput || !queryInput.value.trim()) {
+      toast("Для корректной работы сервиса необходимо сначала заполнить поле описания ситуации или перейти к шагу «Получить консультацию».", "error");
+      return;
+    }
+    // Scenario B: текст есть, но Шаг 1 ещё не выполнен — без lastAnswer
+    // документ не имеет смысла, поэтому останавливаем выполнение и просим
+    // сначала получить консультацию.
+    if (!state.lastAnswer || !state.lastAnswer.trim()) {
+      toast("Для корректной работы сервиса необходимо сначала перейти к шагу «Получить консультацию».", "error");
+      return;
+    }
+    const query = queryInput.value.trim();
     // doc_type приходит ИЗ АКТИВНОЙ КНОПКИ в блоке «Шаг 3. Шаблон документа».
     // Кнопки идут слева направо: complaint → claim → lawsuit → court_order_cancellation.
     const docType = stateDocType.value;
@@ -775,23 +796,91 @@
   }
 
   async function runPdf() {
+    // 1. Сначала показываем статус «Формирую PDF…» ДО отправки запроса.
     setStatus($("documentStatus"), "Формирую PDF…");
-    const btn = $("runPdfBtn"); btn.disabled = true;
+    const btn = $("runPdfBtn");
+    btn.disabled = true;
+    btn.classList.add("is-loading");
+    if (!btn.dataset.originalLabel) btn.dataset.originalLabel = btn.textContent;
+    btn.textContent = "Формирую PDF…";
+
     try {
-      const { status, data } = await api("POST", "/api/pdf", {
-        query: state.lastQuery, final_answer: state.lastAnswer,
-      });
-      if (status === 200 && data && data.error === undefined && data.payment_url === undefined) {
-        toast("PDF готов", "success"); loadSession();
-      } else if (status === 402 && data && data.payment_url) {
-        openPaywall(data.service || "pdf", data.amount, data.payment_url);
-      } else if (data && data.error) {
-        toast(data.error, "error");
+      // 2. Берём текст СТРОГО из Шага 3 (#documentResultBody) — это готовый
+      //    шаблон документа. НЕ используем state.lastAnswer / #queryResultBody
+      //    (это текст Шага 1 — юридическая консультация, а не документ).
+      const docBody = $("documentResultBody");
+      const documentText = docBody ? (docBody.innerText || docBody.textContent || "").trim() : "";
+      if (!documentText) {
+        toast("Сначала сформируйте документ в Шаге 3, чтобы скачать его в PDF.", "error");
+        setStatus($("documentStatus"), "Ошибка", "error");
+        return;
       }
+
+      // 3. Запрос к /api/pdf напрямую через fetch — ответ приходит как
+      //    бинарный поток application/pdf, его НЕЛЬЗЯ парсить как JSON.
+      const response = await fetch(API_BASE + "/api/pdf", {
+        method: "POST",
+        headers: { ...headers },
+        credentials: "include",
+        body: JSON.stringify({
+          query: state.lastQuery,
+          final_answer: documentText,
+        }),
+      });
+
+      // 3. Обработка 402 (paywall) — сервер возвращает JSON с payment_url.
+      if (response.status === 402) {
+        let paywall = null;
+        try {
+          paywall = await response.json();
+        } catch (_) {
+          paywall = null;
+        }
+        if (paywall && paywall.payment_url) {
+          openPaywall(paywall.service || "pdf", paywall.amount, paywall.payment_url);
+        } else {
+          toast("Не удалось получить ссылку на оплату", "error");
+        }
+        return;
+      }
+
+      // 4. Любой неуспешный статус — пробуем прочитать JSON с ошибкой.
+      if (!response.ok) {
+        let errPayload = null;
+        try {
+          errPayload = await response.json();
+        } catch (_) {
+          errPayload = null;
+        }
+        toast((errPayload && errPayload.error) || `Ошибка ${response.status}`, "error");
+        return;
+      }
+
+      // 5. Успешный HTTP 200 — получаем бинарный blob и инициируем скачивание.
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "Документ.pdf";
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+
+      // 6. ТОЛЬКО после успешного скачивания показываем «PDF готов».
+      toast("PDF готов", "success");
+      setStatus($("documentStatus"), "PDF готов");
+      loadSession();
     } catch (e) {
-      toast("Сбой при формировании PDF: " + e.message, "error");
+      toast("Сбой при формировании PDF: " + (e && e.message ? e.message : e), "error");
+      setStatus($("documentStatus"), "Ошибка", "error");
     } finally {
+      // 7. Снимаем блокировку и спиннер, восстанавливаем оригинальную подпись.
       btn.disabled = false;
+      btn.classList.remove("is-loading");
+      if (btn.dataset.originalLabel) {
+        btn.textContent = btn.dataset.originalLabel;
+      }
     }
   }
 
@@ -815,6 +904,74 @@
     }
   }
 
+  /**
+   * Полный сброс состояния приложения: очищает поле ввода, результаты всех шагов,
+   * глобальный state, скрывает скелетоны/таймеры/результаты, снимает блокировки
+   * с кнопок и закрывает платёжное окно. Вызывается по клику на «Начать новую
+   * консультацию» в Шаге 1.
+   */
+  function resetApp() {
+    // 1. Поле ввода.
+    const input = $("queryInput");
+    if (input) input.value = "";
+
+    // 2. Тела результатов всех шагов.
+    ["queryResultBody", "checklistResultBody", "documentResultBody"].forEach((id) => {
+      const el = $(id);
+      if (el) el.innerHTML = "";
+    });
+
+    // 3. Список источников (Шаг 1).
+    const sourcesList = $("querySourcesList");
+    if (sourcesList) sourcesList.innerHTML = "";
+
+    // 4. Глобальный state.
+    state.lastQuery = "";
+    state.lastAnswer = "";
+
+    // 5. Скрыть контейнеры результатов и блок источников.
+    ["queryResult", "checklistResult", "documentResult", "querySources"].forEach((id) => {
+      hide($(id));
+    });
+
+    // 6. Скрыть скелетоны и таймеры, вернуть их текст в дефолтное состояние.
+    hideSkeletonAndTimer();
+    hideStepSkeletonAndTimer("checklist");
+    hideStepSkeletonAndTimer("document");
+    if ($("queryTimerText")) $("queryTimerText").textContent = "Идёт правовой анализ… Прошло 0 сек.";
+    if ($("checklistTimerText")) $("checklistTimerText").textContent = "Готовлю чек-лист… Прошло 0 сек.";
+    if ($("documentTimerText")) $("documentTimerText").textContent = "Формирую документ… Прошло 0 сек.";
+
+    // 7. Сбросить статусы рядом с кнопками.
+    setStatus($("queryStatus"), "");
+    setStatus($("checklistStatus"), "");
+    setStatus($("documentStatus"), "");
+
+    // 8. Разблокировать кнопки и вернуть им исходный лейбл (на случай, если
+    //    внутри runQuery/runChecklist/runDocument они были переведены в
+    //    is-loading и/или disabled).
+    ["runQueryBtn", "runChecklistBtn", "runDocumentBtn", "runPdfBtn"].forEach((id) => {
+      const btn = $(id);
+      if (btn) {
+        btn.disabled = false;
+        btn.classList.remove("is-loading");
+      }
+    });
+    const runDocBtn = $("runDocumentBtn");
+    if (runDocBtn && runDocBtn.dataset && runDocBtn.dataset.originalLabel) {
+      runDocBtn.innerHTML = runDocBtn.dataset.originalLabel;
+    }
+
+    // 9. Сбросить выбор типа документа к дефолту (Шаг 3).
+    setActiveDocType(DOC_TYPE_DEFAULT);
+
+    // 10. Закрыть платёжное окно, если оно открыто.
+    closePaywall();
+
+    // 11. Подтверждение для пользователя.
+    toast("Готово к новой консультации", "success");
+  }
+
   function bind() {
     document.querySelectorAll("[data-scroll]").forEach((el) => {
       el.addEventListener("click", () => {
@@ -827,6 +984,7 @@
     if ($("runDocumentBtn")) $("runDocumentBtn").addEventListener("click", runDocument);
     if ($("runPdfBtn")) $("runPdfBtn").addEventListener("click", runPdf);
     if ($("runPackageBtn")) $("runPackageBtn").addEventListener("click", runPackage);
+    if ($("resetAppBtn")) $("resetAppBtn").addEventListener("click", resetApp);
     if ($("toChecklistBtn")) $("toChecklistBtn").addEventListener("click", () => {
       const target = $("checklist"); if (target) target.scrollIntoView({ behavior: "smooth" });
     });
