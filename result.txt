@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "D:\ClickJurist Production\check.py", line 15, in <module>
+    ast.parse(src_ascii)
+  File "C:\Users\Honor\AppData\Local\Programs\Python\Python312\Lib\ast.py", line 52, in parse
+    return compile(source, filename, mode, flags,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<unknown>", line 45
+    1)  ,     .          ,    .   8001500 .
+     ^
+SyntaxError: unmatched ')'
