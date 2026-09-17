@@ -293,7 +293,7 @@
       const { status, data } = await api("POST", "/api/query/async", { query });
       if (status === 202 && data && data.task_id) {
         const taskId = data.task_id;
-        setStatus($("queryStatus"), "Генерация в фоне…");
+        setStatus($("queryStatus"), "Изучаю законы...");
         await streamConsultation(taskId, query);
       } else if (status === 402 && data && data.payment_url) {
         hideSkeletonAndTimer();
@@ -669,7 +669,11 @@
   }
 
   async function runChecklist() {
-    if (!state.lastAnswer) { toast("Сначала получите консультацию", "error"); return; }
+    const query = ($("queryInput").value || "").trim();
+    if (!query && !state.lastAnswer) {
+      toast("Для корректной работы сервиса необходимо сначала заполнить поле описания ситуации или перейти к шагу «Получить консультацию».", "error");
+      return;
+    }
     setStatus($("checklistStatus"), "Ставим задачу в очередь…");
     const btn = $("runChecklistBtn"); btn.disabled = true;
     showStepSkeletonAndTimer("checklist");
@@ -679,7 +683,7 @@
       });
       if (status === 202 && data && data.task_id) {
         const taskId = data.task_id;
-        setStatus($("checklistStatus"), "Генерация в фоне…");
+        setStatus($("checklistStatus"), "Составляю план...");
         await streamGeneric(taskId, {
           skeletonId: "checklistSkeleton",
           timerId: "checklistTimer",
@@ -732,7 +736,7 @@
       const { status, data } = await api("POST", "/api/document/async", { query, doc_type: docType });
       if (status === 202 && data && data.task_id) {
         const taskId = data.task_id;
-        setStatus($("documentStatus"), "Генерация в фоне…");
+        setStatus($("documentStatus"), "Пишу документ...");
         await streamGeneric(taskId, {
           skeletonId: "documentSkeleton",
           timerId: "documentTimer",
@@ -771,7 +775,6 @@
   }
 
   async function runPdf() {
-    if (!state.lastAnswer) { toast("Сначала получите консультацию", "error"); return; }
     setStatus($("documentStatus"), "Формирую PDF…");
     const btn = $("runPdfBtn"); btn.disabled = true;
     try {

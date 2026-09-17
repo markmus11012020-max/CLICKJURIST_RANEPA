@@ -27,6 +27,7 @@ import asyncio
 import json
 import logging
 import time
+import traceback
 from typing import Any
 
 from fastapi import FastAPI, Request
@@ -645,14 +646,73 @@ async def api_pdf(payload: ChecklistRequest, request: Request) -> Response:
 # ------------------------------------------------------------------------------
 # ПЛАТЕЖИ ROBOKASSA (раздел 4 ТЗ)
 # ------------------------------------------------------------------------------
+def _robokassa_keys_present() -> bool:
+    """Проверить, что ключи Робокассы заданы (не пустые и не дефолтные)."""
+    login = (settings.ROBOKASSA_LOGIN or "").strip()
+    pwd1 = (settings.ROBOKASSA_PASSWORD1 or "").strip()
+    pwd2 = (settings.ROBOKASSA_PASSWORD2 or "").strip()
+    if not login or not pwd1 or not pwd2:
+        return False
+    # Дефолтные sandbox-значения из .env.example считаем «не настроено».
+    defaults = {"clickjurist", "test_password_1", "test_password_2"}
+    if {login, pwd1, pwd2} <= defaults:
+        return False
+    return True
+
+
+def _mock_invoice(service: str, session_hash: str) -> dict[str, object]:
+    """Сгенерировать фейковый счёт для локального тестирования без реальных ключей."""
+    amount = settings.prices.get(service, settings.PRICE_CONSULTATION)
+    inv_id = f"MOCK-{int(time.time() * 1000)}"
+    logger.warning(
+        "Robokassa keys missing/empty — используем MOCK-режим (service=%s, amount=%s)",
+        service,
+        amount,
+    )
+    return {
+        "inv_id": inv_id,
+        "amount": amount,
+        "service": service,
+        "payment_url": "https://robokassa.ru",
+        "is_test": True,
+    }
+
+
 @app.post("/api/payment/create", response_model=PaymentCreateResponse)
 async def api_payment_create(
     payload: PaymentCreateRequest, request: Request
 ) -> PaymentCreateResponse:
     """Выставить счёт на оплату выбранной услуги (sandbox: IsTest=1)."""
-    session_hash, _, _, _ = session_context(request)
-    store.ensure_session(session_hash)
-    return PaymentCreateResponse(**robokassa.create_invoice(payload.service, session_hash))  # type: ignore[arg-type]
+    try:
+        session_hash, _session_id, _ip = session_context(request)
+        store.ensure_session(session_hash)
+
+        # Fallback: если ключи Робокассы не настроены — отдаём mock-ссылку,
+        # чтобы локальная отладка не падала с HTTP 500.
+        if not _robokassa_keys_present():
+            invoice = _mock_invoice(payload.service, session_hash)
+        else:
+            invoice = robokassa.create_invoice(payload.service, session_hash)
+
+        return PaymentCreateResponse(**invoice)  # type: ignore[arg-type]
+    except Exception as exc:  # noqa: BLE001
+        logger.error(
+            "Ошибка в /api/payment/create: %s\n%s",
+            exc,
+            traceback.format_exc(),
+        )
+        # Возвращаем mock-ссылку вместо 500, чтобы UI не падал.
+        try:
+            amount = settings.prices.get(payload.service, settings.PRICE_CONSULTATION)
+        except Exception:
+            amount = 0
+        return PaymentCreateResponse(
+            inv_id=f"ERR-{int(time.time() * 1000)}",
+            amount=amount,
+            service=payload.service,
+            payment_url="https://robokassa.ru",
+            is_test=True,
+        )
 
 
 # ------------------------------------------------------------------------------

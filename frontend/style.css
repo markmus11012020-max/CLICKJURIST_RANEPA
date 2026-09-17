@@ -377,7 +377,7 @@ main { max-width: var(--max-width); margin:0 auto; padding: 28px 22px 80px; }
 
 
 
-.btn { appearance:none; border:1px solid var(--line-strong); background:rgba(255,255,255,.05); color:var(--text); padding:12px 22px; border-radius:12px; font-size:15px; font-weight:600; cursor:pointer; transition: transform .12s ease, background .12s ease, border-color .12s ease; }
+.btn { appearance:none; border:1px solid var(--line-strong); background:rgba(255,255,255,.05); color:var(--text); padding:12px 22px; border-radius:12px; font-size:15px; font-weight:600; cursor:pointer; transition: transform .2s ease, background .2s ease, border-color .2s ease, box-shadow .2s ease, color .2s ease; }
 
 
 
@@ -469,11 +469,30 @@ main { max-width: var(--max-width); margin:0 auto; padding: 28px 22px 80px; }
 
 
 
-  /* Выбранная кнопка: JS переключает классы primary/ghost — добавляем мягкое неоново-бирюзовое свечение. */
+  /* Выбранная кнопка: JS переключает классы primary/ghost и атрибут aria-pressed="true".
+     Активное состояние делаем агрессивно заметным: яркий бирюзовый фон, белый текст,
+     выраженное неоновое свечение и лёгкое масштабирование. */
 
+  .doc-type-btn[aria-pressed="true"] {
+    background: var(--accent);
+    color: #ffffff;
+    border-color: var(--accent-strong);
+    box-shadow:
+      0 0 12px rgba(16, 163, 186, 0.6),
+      0 0 28px -4px rgba(16, 163, 186, 0.55),
+      inset 0 0 14px rgba(255, 255, 255, 0.18);
+    transform: scale(1.03);
+  }
 
-
-  .doc-type-btn[aria-pressed="true"] { box-shadow: 0 0 24px -8px rgba(var(--accent-rgb), .8), inset 0 0 14px rgba(var(--accent-rgb), .22); }
+  .doc-type-btn[aria-pressed="true"]:hover:not(:disabled) {
+    background: var(--accent-strong);
+    border-color: var(--accent-deeper);
+    box-shadow:
+      0 0 16px rgba(16, 163, 186, 0.75),
+      0 0 34px -4px rgba(16, 163, 186, 0.65),
+      inset 0 0 14px rgba(255, 255, 255, 0.22);
+    transform: scale(1.04);
+  }
 
 
 
