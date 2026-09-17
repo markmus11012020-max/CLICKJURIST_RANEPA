@@ -477,6 +477,7 @@ def _run_document_task(
     """Фоновая задача генерации документа со стримингом токенов."""
     # Hard intercept for corporate queries sent to complaint
     q_lower = query.lower() if query else ""
+    explanation_text: str = ""
     if doc_type == "complaint" and any(k in q_lower for k in ["ооо", "генеральный директор", "акции", "доля 15%", "крупная сделка"]):
         doc_type = "lawsuit"
         # Force push explanation event immediately before LLM call

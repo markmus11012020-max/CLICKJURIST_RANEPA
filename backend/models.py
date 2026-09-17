@@ -34,7 +34,7 @@ class DocumentRequest(BaseModel):
     """Запрос шаблона документа."""
 
     query: str = Field(..., min_length=3)
-    doc_type: DocType = "isk"
+    doc_type: DocType = "lawsuit"
 
 
 class SourceLink(BaseModel):
