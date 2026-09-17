@@ -11,7 +11,6 @@ ServiceCode = Literal[
     "document",
     "pdf",
     "package_basic",
-    "package_premium",
 ]
 DocType = Literal["complaint", "claim", "lawsuit", "court_order_cancellation"]
 LegalCategory = Literal["b2b", "b2c"]

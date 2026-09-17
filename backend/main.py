@@ -24,6 +24,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import logging
 import time
@@ -670,6 +671,44 @@ def _robokassa_keys_present() -> bool:
     return True
 
 
+def _build_robokassa_url(
+    inv_id: str, amount: int, service: str, description: str = ""
+) -> str:
+    """Собрать реальный URL Робокассы с MD5-подписью.
+
+    Формула подписи (официальная документация Robokassa):
+        SignatureValue = MD5(MerchantLogin:OutSum:InvId:Password1)
+
+    Параметры читаются из окружения с безопасным fallback на плейсхолдеры,
+    чтобы функция не падала при локальной отладке без реальных ключей.
+    """
+    login = (settings.ROBOKASSA_LOGIN or "demo_login").strip() or "demo_login"
+    password1 = (
+        settings.ROBOKASSA_PASSWORD1 or "demo_password_1"
+    ).strip() or "demo_password_1"
+    is_test = bool(settings.ROBOKASSA_TEST)
+
+    out_sum = f"{amount:.2f}"
+    signature = hashlib.md5(
+        f"{login}:{out_sum}:{inv_id}:{password1}".encode("utf-8")
+    ).hexdigest()
+
+    desc = description or f"ClickJurist: услуга «{service}»"
+    base_url = (
+        settings.ROBOKASSA_PAYMENT_URL
+        or "https://auth.robokassa.ru/Merchant/Index.aspx"
+    )
+    params = (
+        f"MerchantLogin={login}"
+        f"&OutSum={out_sum}"
+        f"&InvId={inv_id}"
+        f"&Description={desc}"
+        f"&SignatureValue={signature}"
+        f"&IsTest={1 if is_test else 0}"
+    )
+    return f"{base_url}?{params}"
+
+
 def _mock_invoice(service: str, session_hash: str) -> dict[str, object]:
     """Сгенерировать фейковый счёт для локального тестирования без реальных ключей."""
     amount = settings.prices.get(service, settings.PRICE_CONSULTATION)
@@ -683,7 +722,7 @@ def _mock_invoice(service: str, session_hash: str) -> dict[str, object]:
         "inv_id": inv_id,
         "amount": amount,
         "service": service,
-        "payment_url": "https://robokassa.ru",
+        "payment_url": _build_robokassa_url(inv_id, amount, service),
         "is_test": True,
     }
 
@@ -720,7 +759,9 @@ async def api_payment_create(
             inv_id=f"ERR-{int(time.time() * 1000)}",
             amount=amount,
             service=payload.service,
-            payment_url="https://robokassa.ru",
+            payment_url=_build_robokassa_url(
+                f"ERR-{int(time.time() * 1000)}", amount, payload.service
+            ),
             is_test=True,
         )
 
@@ -732,13 +773,11 @@ async def api_payment_create(
 async def api_package(payload: PackageRequest, request: Request) -> Response:
     """Пакетная генерация: консультация + чек-лист + документ (раздел 6 ТЗ).
 
-    Тариф:
-        * ``basic`` (390 ₽) — консультация + чек-лист;
-        * ``premium`` (490 ₽) — консультация + чек-лист + шаблон документа.
+    Единый тариф ``basic`` (390 ₽) — консультация + чек-лист + шаблон документа.
 
     Доступ ТОЛЬКО после оплаты (проверяется через ``_session_gate``).
     """
-    service_code = "package_basic" if payload.tier == "basic" else "package_premium"
+    service_code = "package_basic"
     session_hash, session_id, was_free, denial = _session_gate(request, service_code)  # type: ignore[arg-type]
     if denial is not None:
         return denial
@@ -746,7 +785,7 @@ async def api_package(payload: PackageRequest, request: Request) -> Response:
         store.consume_free_request(session_hash)
     store.register_request(session_hash, was_free)
 
-    amount = settings.PRICE_PACKAGE_BASIC if payload.tier == "basic" else settings.PRICE_PACKAGE_PREMIUM
+    amount = settings.PRICE_PACKAGE_BASIC
     body = PackageResponse(tier=payload.tier, amount=amount)
 
     try:
@@ -775,16 +814,15 @@ async def api_package(payload: PackageRequest, request: Request) -> Response:
             logger.warning("Пакет: чек-лист не сгенерирован: %s", exc)
             body.warning = (body.warning or "") + f" Чек-лист: {exc}"
 
-        # Документ (только premium).
-        if payload.tier == "premium":
-            try:
-                document = llm_chain.draft_document(mask.masked_query, "lawsuit")
-                body.document = with_dynamic_disclaimer(
-                    llm_chain.attach_disclaimer(document, for_document=True)
-                )
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("Пакет: документ не сгенерирован: %s", exc)
-                body.warning = (body.warning or "") + f" Документ: {exc}"
+        # Документ (всегда включён в пакет).
+        try:
+            document = llm_chain.draft_document(mask.masked_query, "lawsuit")
+            body.document = with_dynamic_disclaimer(
+                llm_chain.attach_disclaimer(document, for_document=True)
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Пакет: документ не сгенерирован: %s", exc)
+            body.warning = (body.warning or "") + f" Документ: {exc}"
 
         store.log_request(session_hash, service_code, 200, was_free)
         response = JSONResponse(content=body.model_dump())
