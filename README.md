@@ -101,9 +101,13 @@
 ├── backend/                       # FastAPI + бизнес-логика
 │   ├── api/                       # HTTP-слой, разбит по доменам
 │   │   ├── deps.py                # FastAPI-зависимости: payment_required, session_gate
-│   │   └── router_wizard.py       # Визард (Stage 1/2/3 + payment integration)
+│   │   ├── router_wizard.py       # Визард (Stage 1/2/3 + payment integration)
+│   │   └── router_payments.py     # Webhook Робокассы для Wizard-сценария (shp_session_id)
+│   ├── core/                      # Ядро бизнес-инвариантов (152-ФЗ)
+│   │   └── anonymizer.py          # deanonymize_document — обратная подстановка ПДн после оплаты
 │   ├── services/                  # Бизнес-логика и интеграции
-│   ├── wizard_store.py            # SQLite-снимки WizardSession
+│   │   └── robokassa.py           # Подпись Result URL, генерация PaymentURL
+│   ├── wizard_store.py            # SQLite-снимки WizardSession + холодная таблица wizard_cases
 │   ├── security.py                # Извлечение IP, fingerprint
 │   ├── main.py                    # Сборка приложения, middleware, статика
 │   ├── config.py                  # Настройки (env + KMS bootstrap)
@@ -134,6 +138,9 @@
 │   ├── test_chatbot_widget.py     # Composer subscribe, state-binding
 │   ├── test_chatbot_stream.py     # Стриминг из LLMGateway
 │   ├── test_providers.py          # LLM-провайдеры + chain order
+│   ├── test_anonymizer.py         # deanonymize_document: плейсхолдеры, best-effort, формат карты
+│   ├── test_payments_webhook.py   # Webhook Робокассы: подпись, shp_session_id, идемпотентность
+│   ├── test_wizard_paywall.py     # Paywall STAGE_3: превью 30%, размаскирование после оплаты
 │   └── ...
 ├── .clinerules                    # Правила для Cline
 ├── .env.example                   # Пример файла с переменными окружения

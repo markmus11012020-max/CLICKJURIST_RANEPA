@@ -6,6 +6,7 @@
 * :mod:`backend.api.router_query` — консультация и фоновые задачи;
 * :mod:`backend.api.router_docs` — чек-лист, документ, PDF, пакет;
 * :mod:`backend.api.router_payment` — оплата Robokassa;
+* :mod:`backend.api.router_payments` — webhook Робокассы для Wizard (STAGE_3);
 * :mod:`backend.api.router_auth` — JWT-сессия;
 * :mod:`backend.api.router_meta` — сессия, тарифы, здоровье, SPA;
 * :mod:`backend.api.deps` — платёжный барьер.
@@ -35,6 +36,7 @@ from backend.api import (
     router_docs,
     router_meta,
     router_payment,
+    router_payments,
     router_query,
     router_wizard,
 )
@@ -138,6 +140,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 app.include_router(router_query.router)
 app.include_router(router_docs.router)
 app.include_router(router_payment.router)
+app.include_router(router_payments.router)
 app.include_router(router_auth.router)
 app.include_router(router_meta.router)
 app.include_router(router_wizard.router)

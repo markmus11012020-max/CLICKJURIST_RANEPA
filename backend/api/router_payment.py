@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import time
 import traceback
+import uuid
 
 from fastapi import APIRouter, Request
 from fastapi.responses import Response
@@ -92,21 +93,55 @@ def mock_invoice(service: str, session_hash: str) -> dict[str, object]:
 # ------------------------------------------------------------------------------
 # Создание счёта
 # ------------------------------------------------------------------------------
+def _validate_shp_session_id(raw: str | None) -> str | None:
+    """Валидировать ``shp_session_id``: должен быть UUIDv4 или None.
+
+    Невалидное значение отбрасываем (без 4xx — для устойчивости
+    общего сценария), но логируем предупреждение.
+    """
+    if not raw:
+        return None
+    try:
+        # ``str(UUID(...))`` нормализует формат.
+        return str(uuid.UUID(str(raw).strip()))
+    except (ValueError, TypeError, AttributeError):
+        logger.warning(
+            "/api/payment/create: невалидный shp_session_id=%r — игнорируем",
+            raw,
+        )
+        return None
+
+
 @router.post("/create", response_model=PaymentCreateResponse)
 async def api_payment_create(
     payload: PaymentCreateRequest, request: Request
 ) -> PaymentCreateResponse:
-    """Выставить счёт на оплату выбранной услуги (sandbox: IsTest=1)."""
+    """Выставить счёт на оплату выбранной услуги (sandbox: IsTest=1).
+
+    Поддерживает Wizard-сценарий (STAGE_3): если в запросе передан
+    ``shp_session_id`` (UUID Wizard-сессии), он пробрасывается Робокассе
+    через ``custom_shp`` и возвращается в Result URL/webhook, чтобы связать
+    платёж с конкретной сессией и пометить ``is_paid=True``.
+    """
     try:
         session_hash, _session_id, _ip = session_context(request)
         store.ensure_session(session_hash)
+
+        custom_shp: dict[str, str] | None = None
+        shp_session_id = _validate_shp_session_id(payload.shp_session_id)
+        if shp_session_id:
+            custom_shp = {"session_id": shp_session_id}
 
         # Fallback: если ключи Робокассы не настроены — отдаём mock-ссылку,
         # чтобы локальная отладка не падала с HTTP 500.
         if not robokassa_keys_present():
             invoice = mock_invoice(payload.service, session_hash)
         else:
-            invoice = robokassa.create_invoice(payload.service, session_hash)
+            invoice = robokassa.create_invoice(
+                payload.service,
+                session_hash,
+                custom_shp=custom_shp,
+            )
 
         return PaymentCreateResponse(**invoice)  # type: ignore[arg-type]
     except Exception as exc:  # noqa: BLE001

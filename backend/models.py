@@ -77,9 +77,17 @@ class DocumentResponse(BaseModel):
 
 
 class PaymentCreateRequest(BaseModel):
-    """Запрос на формирование счёта в Robokassa."""
+    """Запрос на формирование счёта в Robokassa.
+
+    ``shp_session_id`` — опциональный UUID Wizard-сессии. Если задан,
+    пробрасывается Робокассе как кастомный ``shp_session_id`` параметр
+    и затем возвращается транзитом в Result URL/webhook, чтобы связать
+    платёж с конкретной Wizard-сессией (STAGE_3, раздел 4 ТЗ).
+    Сам по себе UUID не содержит ПДн, передача безопасна.
+    """
 
     service: ServiceCode = "consultation"
+    shp_session_id: str | None = None
 
 
 class PaymentCreateResponse(BaseModel):
@@ -219,6 +227,11 @@ class WizardSession(BaseModel):
     checklist_state: dict[str, bool] = Field(default_factory=dict)
     final_document_markdown: str | None = None
     is_paid: bool = False
+    #: Номер счёта Робокассы (``InvId``), привязанный к успешной оплате.
+    #: Заполняется обработчиком вебхука ``/api/payments/robokassa-webhook``
+    #: и сохраняется в холодном хранилище (``wizard_cases.payment_inv_id``)
+    #: для сверки финансовых документов и спорных платежей.
+    payment_inv_id: str | None = None
     created_at: str | None = None
     updated_at: str | None = None
 

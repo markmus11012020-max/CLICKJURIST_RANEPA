@@ -44,4 +44,12 @@ def reset_db():
         if path.exists():
             path.unlink()
     store.init_schema()
+
+    # Wizard-худ-кеш — singleton. Без явной очистки состояние сессий
+    # протекает между тестами (например, is_paid прошлого кейса влияет
+    # на новый). Сбрасываем и HOT, и COLD.
+    from backend import wizard_store
+
+    wizard_store.reset_for_tests()
+
     yield

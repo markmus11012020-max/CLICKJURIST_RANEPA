@@ -11,7 +11,7 @@ import { closePaywall } from './js/ui/paywall.js';
 import { loadSession } from './js/ui/session.js';
 import { api } from './js/core/net.js';
 import { bindWizard } from './js/features/wizard.js';
-import { pollWizardUntilReady } from './js/ui/state.js';
+import { pollWizardUntilReady, wizardState } from './js/ui/state.js';
 
 /**
  * Восстановить процесс визарда после перезагрузки страницы (F5).
@@ -28,6 +28,11 @@ async function _recoverActiveWizardTask() {
   try {
     const { ok, data } = await api('GET', '/api/wizard/state');
     if (!ok || !data) return;
+    // Зафиксируем UUID Wizard-сессии сразу — пригодится, если позже
+    // потребуется выставить счёт Робокассы с ``shp_session_id``.
+    if (data.session && data.session.session_id) {
+      wizardState.setSessionId(data.session.session_id);
+    }
     if (data.has_active_task !== true) return;
 
     // Переключаем UI на экран лоадера сразу — пользователь не должен

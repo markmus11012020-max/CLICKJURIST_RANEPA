@@ -18,12 +18,26 @@
  *        виджетом Робокассы — он НЕ защищает текст, поэтому подмена
  *        содержимого в DOM обязательна;
  *      — если isPaid — снять блюр и показать кнопку скачивания.
+ *        Сервер при ``is_paid == True`` отдаёт уже размаскированный
+ *        Markdown (см. backend.api.router_wizard._build_paid_document),
+ *        фронтенд просто отрисовывает его как есть.
  *
  *   3. bindStage2Advance() — кнопка «Готово →» на STAGE_2: шлёт финальный
- *      sync-checklist с advance_stage=true → Wizard переходит на STAGE_3.
+ *      sync-checklist с advance_stage=true → Wizard переходит на STAGE_3,
+ *      затем опрашивает /api/wizard/state для рендера документа с paywall.
  *
  *   4. bindStage1Submit() — форма на STAGE_1: запускает пайплайн анализа,
  *      стартует polling и переходит на STAGE_1-loader.
+ *
+ *   5. refreshPaymentState() — после возврата с Робокассы опрашивает
+ *      /api/wizard/state; если is_paid == true — перерисовывает документ
+ *      (сервер к этому моменту уже подставил реальные ПДн через
+ *      deanonymize_document).
+ *
+ *   6. bindStage3Paywall() — кнопка «Разблокировать» на STAGE_3:
+ *      создаёт счёт в Робокассе через /api/payment/create, передавая
+ *      ``shp_session_id`` (UUID Wizard-сессии), чтобы webhook мог найти
+ *      нужный WizardSession и пометить ``is_paid=True``.
  *
  * Импортируется из script.js (entry-point) после загрузки DOM.
  */
@@ -302,6 +316,11 @@ export function renderDocument(opts = {}) {
 /**
  * Кнопка «Готово →» на STAGE_2: финальный sync-checklist + advance_stage=true.
  * Сервер (см. backend/api/router_wizard.py) возвращает current_stage=STAGE_3.
+ *
+ * Сразу после успешного advance запрашиваем /api/wizard/state, чтобы
+ * отрендерить документ: на этом этапе оплаты нет, бэкенд отдаст только
+ * безопасное превью (первые 30% + маркер ``<<<PAYWALL_DOCUMENT>>>``),
+ * фронтенд подменит остаток декоративной «рыбой».
  */
 function bindStage2Advance() {
   const btn = document.querySelector('[data-wizard-advance]');
@@ -326,7 +345,31 @@ function bindStage2Advance() {
     } else {
       wizardState.setStage('STAGE_3');
     }
+    // Тянем актуальное состояние с уже отфильтрованным документом
+    // и отрисовываем его (с paywall, потому что оплаты ещё не было).
+    await _renderDocumentFromState();
   });
+}
+
+/**
+ * Универсальный помощник: запросить состояние с бэкенда и отрендерить
+ * документ с учётом ``is_packed``. Используется:
+ *   * сразу после advance с STAGE_2 на STAGE_3 (оплаты ещё нет);
+ *   * при первичной загрузке страницы, если пользователь уже на STAGE_3;
+ *   * после успешной оплаты (refreshPaymentState вызывает аналогичную
+ *     логику, но жёстко с ``isPaid: true``).
+ */
+async function _renderDocumentFromState() {
+  const { data } = await api('GET', '/api/wizard/state');
+  if (!data || !data.session) return;
+  const session = data.session;
+  if (session.current_stage !== 'STAGE_3') return;
+  const md = session.final_document_markdown || '';
+  const doc = document.querySelector('[data-wizard-document]');
+  if (doc) {
+    doc.dataset.rawMarkdown = md;
+  }
+  renderDocument({ markdown: md, isPaid: Boolean(session.is_paid) });
 }
 
 /**
@@ -382,6 +425,12 @@ function bindStage1Submit() {
  * Paywall-кнопка «Разблокировать» на STAGE_3: создаёт счёт в Робокассе через
  * /api/payment/create и открывает существующее окно оплаты. После фактической
  * оплаты (successURL) — refresh /api/wizard/state и снять блюр.
+ *
+ * ВАЖНО: передаём ``shp_session_id`` (UUID Wizard-сессии) в /api/payment/create,
+ * чтобы сервер пробросил его Робокассе через ``custom_shp``. После оплаты
+ * Робокасса вернёт его транзитом в Result URL, и webhook'у
+ * ``/api/payments/robokassa-webhook`` останется только найти сессию по UUID
+ * и пометить ``is_paid=True``.
  */
 function bindStage3Paywall() {
   const btn = document.querySelector('[data-wizard-pay]');
@@ -389,10 +438,19 @@ function bindStage3Paywall() {
   btn.dataset.bound = '1';
   btn.addEventListener('click', async () => {
     btn.disabled = true;
-    // 1. Создаём счёт.
-    const { ok, data } = await api('POST', '/api/payment/create', {
-      service: 'document',
-    });
+    // 1. Создаём счёт, передавая UUID Wizard-сессии. UUID берём из
+    //    wizardState (источник правды — ответ /api/wizard/state);
+    //    если его нет, пробуем резервный путь через DOM-атрибут.
+    let sessionId = wizardState.getSessionId() || '';
+    if (!sessionId) {
+      const root = document.querySelector('[data-wizard-stepper]');
+      sessionId = (root && root.dataset && root.dataset.sessionId) || '';
+    }
+    const payload = { service: 'document' };
+    if (sessionId) {
+      payload.shp_session_id = sessionId;
+    }
+    const { ok, data } = await api('POST', '/api/payment/create', payload);
     if (!ok || !data || !data.payment_url) {
       btn.disabled = false;
       toast('Не удалось открыть окно оплаты', 'error');
@@ -415,14 +473,35 @@ function bindStage3Paywall() {
  * Опросить /api/wizard/state и, если is_paid уже true, перерисовать документ
  * без блюра. Вызывается после успешного возврата с Робокассы (callback
  * successURL или событие focus окна после оплаты).
+ *
+ * Сервер при ``is_paid == true`` возвращает ``session.final_document_markdown``
+ * уже размаскированным (см. backend.core.anonymizer.deanonymize_document):
+ * реальные ФИО/адреса/телефоны подставлены вместо плейсхолдеров
+ * ``[ФИО_1]`` и т.п. Поэтому фронтенд передаёт Markdown «как есть», без
+ * какой-либо дополнительной обработки.
  */
 export async function refreshPaymentState() {
   const { data } = await api('GET', '/api/wizard/state');
-  if (data && data.session && data.session.is_paid) {
-    const doc = document.querySelector('[data-wizard-document]');
-    const raw = doc ? doc.dataset.rawMarkdown || '' : '';
-    renderDocument({ markdown: raw, isPaid: true });
+  if (!data || !data.session) return;
+  const session = data.session;
+  if (!session.is_paid) {
+    // Оплата ещё не подтверждена (или вебхук Робокассы ещё не пришёл).
+    // Ничего не делаем — пользователь увидит текущее состояние paywall.
+    return;
   }
+  if (session.current_stage !== 'STAGE_3') {
+    // Не наша стадия — нечего рендерить.
+    return;
+  }
+  // Берём уже deanonymized Markdown с сервера. Прячем его «эталон» в
+  // ``data-«ок»``, чтобы повторные вызовы refreshPaymentState (например,
+  // после очередного F5) могли взять ту же строку без лишнего запроса.
+  const md = session.final_document_markdown || '';
+  const doc = document.querySelector('[data-wizard-document]');
+  if (doc) {
+    doc.dataset.rawMarkdown = md;
+  }
+  renderDocument({ markdown: md, isPaid: true });
 }
 
 /** Главная функция модуля — bind'ит все этапы. Вызывать из entry-point. */
@@ -432,6 +511,12 @@ export function bindWizard() {
   _bindChecklistDelegation();
   bindStage2Advance();
   bindStage3Paywall();
+  // Если пользователь перезагрузил страницу уже на STAGE_3 — отрендерим
+  // документ (с paywall или без, по факту is_paid). Идемпотентно: если
+  // _recoverActiveWizardTask из script.js уже подхватил polling — мы
+  // всё равно запросим /state, но это дешёвый GET, а без него не
+  // восстановится документ.
+  _renderDocumentFromState();
   // Если пользователь ушёл со страницы — отменим висящий polling.
   window.addEventListener('beforeunload', () => stopWizardPoll());
   window.addEventListener('pagehide', () => stopWizardPoll());
