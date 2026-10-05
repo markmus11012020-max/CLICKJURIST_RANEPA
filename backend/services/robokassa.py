@@ -34,7 +34,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import uuid
-from typing import Mapping
+from collections.abc import Mapping
 
 from backend.config import RobokassaSettings, robokassa_settings, settings
 
