@@ -100,7 +100,7 @@ class GreetingDismissPolicy:
         return not self._dismissed
 
     @classmethod
-    def from_marker(cls, marker: str | None, *, ttl_days: int = 7) -> "GreetingDismissPolicy":
+    def from_marker(cls, marker: str | None, *, ttl_days: int = 7) -> GreetingDismissPolicy:
         """Разобрать значение из ``localStorage``.
 
         Формат маркера: ``<unix-ts>|<0|1>`` — время закрытия и признак

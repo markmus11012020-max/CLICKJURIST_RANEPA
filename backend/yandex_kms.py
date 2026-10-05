@@ -110,7 +110,7 @@ def _read_ciphertext_b64() -> str:
         path = os.path.join(root, path)
     if not os.path.exists(path):
         return ""
-    with open(path, "r", encoding="utf-8") as fh:
+    with open(path, encoding="utf-8") as fh:
         return fh.read().strip()
 
 

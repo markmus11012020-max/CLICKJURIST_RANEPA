@@ -9,9 +9,9 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-from chatbot.domain.entities import BotReply, ChatMessage, Conversation
+from chatbot.domain.entities import ChatMessage, Conversation
 from chatbot.domain.enums import Intent
 
 
@@ -35,7 +35,7 @@ class SystemClock(Clock):
     """Боевая реализация :class:`Clock` поверх системных часов."""
 
     def now(self) -> datetime:
-        return datetime.now(tz=timezone.utc)
+        return datetime.now(tz=UTC)
 
 
 class ConversationRepository(ABC):

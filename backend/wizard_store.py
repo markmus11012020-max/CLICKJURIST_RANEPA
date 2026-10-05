@@ -56,7 +56,7 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Protocol
 
 from backend.config import settings
@@ -96,7 +96,7 @@ _COLD_INDEX = (
 # Утилиты времени
 # ------------------------------------------------------------------------------
 def _utc_now_iso() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S")
 
 
 def _parse_iso(value: str | None) -> float:

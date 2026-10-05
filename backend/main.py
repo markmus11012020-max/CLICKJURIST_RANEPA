@@ -29,6 +29,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+
 from backend.api import (
     router_auth,
     router_docs,
@@ -39,8 +40,8 @@ from backend.api import (
 )
 from backend.config import PROJECT_ROOT, settings
 from backend.logging_setup import setup_logging
-from backend.startup_checks import validate_startup
 from backend.services.rate_limit import init_limiters
+from backend.startup_checks import validate_startup
 from backend.static_files import NoCacheStaticFiles
 
 # --- Инициализация окружения --------------------------------------------------
@@ -174,7 +175,7 @@ except Exception as _chatbot_exc:  # pragma: no cover — модуль не кр
 from backend.api.deps import payment_required as _payment_required  # noqa: E402
 from backend.api.deps import session_gate as _session_gate  # noqa: E402
 
-__all__ = ["app"]
+__all__ = ["app", "_session_gate", "_payment_required"]
 
 
 if __name__ == "__main__":  # pragma: no cover — точка входа для локального запуска

@@ -28,7 +28,6 @@ from fastapi import APIRouter, Request, Response
 
 from backend import task_store, wizard_store
 from backend.api.deps import enforce_ip_rate_limit
-from backend.config import settings
 from backend.db import utc_now_iso
 from backend.jwt_auth import get_session_from_request
 from backend.models import (

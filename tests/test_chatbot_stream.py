@@ -38,8 +38,7 @@ class FakeStreamingLLM(LLMGateway):
 
     def stream_answer(self, question, context, history):
         self.calls.append((question, context))
-        for piece in self._pieces:
-            yield piece
+        yield from self._pieces
 
     @property
     def last_provider(self) -> str:

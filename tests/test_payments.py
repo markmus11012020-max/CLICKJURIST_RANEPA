@@ -14,7 +14,7 @@ log-capture handler-ом (см. ошибку httpx ``logger.info`` formatting).
 from __future__ import annotations
 
 from backend.db import store
-from backend.main import _session_gate, _payment_required
+from backend.main import _payment_required, _session_gate
 
 
 def _session_hash_for(fp: str = "test-fp-new-session") -> str:
@@ -121,8 +121,8 @@ def test_payment_required_helper_builds_valid_payload():
 from backend.config import robokassa_settings
 from backend.services.robokassa import (
     payment_signature,
-    success_signature,
     result_signature,
+    success_signature,
     verify_result_signature,
     verify_success_signature,
 )

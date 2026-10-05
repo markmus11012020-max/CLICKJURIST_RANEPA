@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from backend.services.prompts.persona import SYSTEM_PERSONA
 
-
 # ==============================================================================
 # STAGE 2 — АНАЛИЗ И ВЕБ-ФАКТЧЕКИНГ (Gemini 2.5 Flash через AITunnel)
 # ==============================================================================

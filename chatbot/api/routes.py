@@ -10,7 +10,7 @@ import logging
 from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 from starlette.concurrency import iterate_in_threadpool
 
 from chatbot.api.dependencies import (

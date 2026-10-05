@@ -31,7 +31,7 @@ def client_ip(request: Request) -> str:
     real_ip = request.headers.get("x-real-ip", "")
     if real_ip:
         return real_ip.strip()
-    return request.client.host if request.client else "0.0.0.0"
+    return request.client.host if request.client else "0.0.0.0"  # noqa: S104
 
 
 def client_fingerprint(request: Request) -> str:

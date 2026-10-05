@@ -1,6 +1,6 @@
 """Тесты мегапайплайна в оффлайн-режиме (MASKING_PROVIDER=regex)."""
-from backend.services.pii_masker import mask_query
 from backend.services.llm_chain import attach_disclaimer, run_pipeline
+from backend.services.pii_masker import mask_query
 
 
 def test_masking_removes_phone():

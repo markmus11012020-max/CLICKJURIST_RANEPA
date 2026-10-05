@@ -6,8 +6,6 @@
 """
 from __future__ import annotations
 
-import importlib
-
 import pytest
 
 from backend import config, startup_checks

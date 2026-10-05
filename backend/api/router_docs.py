@@ -297,7 +297,7 @@ async def api_pdf(payload: ChecklistRequest, request: Request) -> Response:
             ),
             timeout=PDF_TIMEOUT_S,
         )
-    except asyncio.TimeoutError:
+    except TimeoutError:
         elapsed_ms = int((time.perf_counter() - started) * 1000)
         logger.error(
             f"[PDF] TIMEOUT: build_pdf не завершился за {PDF_TIMEOUT_S:.0f}с "

@@ -20,6 +20,7 @@ import json
 import re
 import time
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
 
 import requests
 
@@ -155,7 +156,7 @@ class BaseProvider(ABC):
         model: str | None = None,
         temperature: float = 0.2,
         max_tokens: int = 4000,
-    ) -> "Iterator[str]":
+    ) -> Iterator[str]:
         """Стриминг токенов от модели (Шаг 1 ТЗ prompt170926.md).
 
         По умолчанию провайдеры НЕ поддерживают стриминг — выбрасывается

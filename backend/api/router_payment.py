@@ -6,7 +6,7 @@ import time
 import traceback
 
 from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import Response
 
 from backend.config import settings
 from backend.db import store
@@ -52,7 +52,7 @@ def build_robokassa_url(
 
     out_sum = f"{amount:.2f}"
     signature = hashlib.md5(
-        f"{login}:{out_sum}:{inv_id}:{password1}".encode("utf-8")
+        f"{login}:{out_sum}:{inv_id}:{password1}".encode()
     ).hexdigest()
 
     desc = description or f"ClickJurist: услуга «{service}»"
