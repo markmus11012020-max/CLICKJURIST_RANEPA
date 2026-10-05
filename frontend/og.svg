@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <!-- Open Graph image для шеров в Facebook, Twitter, Slack и др. -->
+  <defs>
+    <linearGradient id="og-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#111625"/>
+      <stop offset="50%" stop-color="#141a29"/>
+      <stop offset="100%" stop-color="#0a0f1c"/>
+    </linearGradient>
+    <radialGradient id="og-glow" cx="20%" cy="20%" r="60%">
+      <stop offset="0%" stop-color="rgba(16, 163, 186, 0.30)"/>
+      <stop offset="100%" stop-color="rgba(16, 163, 186, 0)"/>
+    </radialGradient>
+    <linearGradient id="og-accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7fc4d2"/>
+      <stop offset="55%" stop-color="#0a819c"/>
+      <stop offset="100%" stop-color="#0a5f70"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Фон -->
+  <rect width="1200" height="630" fill="url(#og-bg)"/>
+  <rect width="1200" height="630" fill="url(#og-glow)"/>
+
+  <!-- Декоративная сетка-фон -->
+  <g opacity="0.05" stroke="#7fc4d2" stroke-width="1">
+    <line x1="0" y1="105" x2="1200" y2="105"/>
+    <line x1="0" y1="210" x2="1200" y2="210"/>
+    <line x1="0" y1="315" x2="1200" y2="315"/>
+    <line x1="0" y1="420" x2="1200" y2="420"/>
+    <line x1="0" y1="525" x2="1200" y2="525"/>
+  </g>
+
+  <!-- Щит-логотип -->
+  <g transform="translate(100, 130)">
+    <path d="M50,5 L92,20 L92,55 C92,82 73,100 50,105 C27,100 8,82 8,55 L8,20 Z"
+          fill="none" stroke="url(#og-accent)" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="M50,12 L82,23 L82,55 C82,76 68,90 50,93 C32,90 18,76 18,55 L18,23 Z"
+          fill="none" stroke="url(#og-accent)" stroke-width="1.2" opacity="0.55"/>
+    <path d="M36,53 L46,63 L65,42" fill="none" stroke="url(#og-accent)"
+          stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Бренд-текст -->
+  <text x="220" y="180" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+        font-size="48" font-weight="700" fill="#e4e9f2" letter-spacing="2">
+    КЛИК<tspan fill="#10a3ba">ЮРИСТ</tspan>
+  </text>
+  <text x="222" y="220" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+        font-size="18" font-weight="500" fill="#a9b4c9" letter-spacing="6">
+    МГНОВЕННАЯ ЮРИДИЧЕСКАЯ ПОМОЩЬ
+  </text>
+
+  <!-- Главный заголовок -->
+  <text x="100" y="350" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+        font-size="56" font-weight="800" fill="#e4e9f2" letter-spacing="-1">
+    Юридическая консультация
+  </text>
+  <text x="100" y="420" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+        font-size="56" font-weight="800" fill="url(#og-accent)" letter-spacing="-1">
+    за один запрос
+  </text>
+
+  <!-- Подзаголовок -->
+  <text x="100" y="480" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+        font-size="22" font-weight="400" fill="#a9b4c9">
+    Маскировка ПДн по 152-ФЗ · Проверка по 2–3 источникам
+  </text>
+  <text x="100" y="510" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+        font-size="22" font-weight="400" fill="#a9b4c9">
+    Оплата до результата · <tspan fill="#6ea997" font-weight="700">от 49 ₽ за шаг</tspan>
+  </text>
+
+  <!-- Нижняя плашка -->
+  <g transform="translate(100, 545)">
+    <rect x="0" y="0" width="220" height="50" rx="25"
+          fill="rgba(16, 163, 186, 0.15)" stroke="rgba(16, 163, 186, 0.45)" stroke-width="1"/>
+    <text x="110" y="32" text-anchor="middle"
+          font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+          font-size="20" font-weight="700" fill="#7fc4d2">
+      Получить консультацию
+    </text>
+  </g>
+
+  <!-- Декоративная mock-карточка справа -->
+  <g transform="translate(720, 130)" opacity="0.95">
+    <rect x="0" y="0" width="380" height="380" rx="22"
+          fill="rgba(255, 255, 255, 0.04)" stroke="rgba(16, 163, 186, 0.30)" stroke-width="1.5"/>
+    <!-- Заголовок mock-карточки -->
+    <rect x="0" y="0" width="380" height="50" rx="22"
+          fill="rgba(16, 163, 186, 0.18)"/>
+    <rect x="0" y="22" width="380" height="28" fill="rgba(16, 163, 186, 0.18)"/>
+    <circle cx="30" cy="25" r="10" fill="rgba(255, 255, 255, 0.18)"/>
+    <path d="M24,25 L29,30 L37,21" fill="none" stroke="#7fc4d2" stroke-width="2" stroke-linecap="round"/>
+    <text x="52" y="30" font-family="-apple-system, sans-serif" font-size="14" font-weight="600" fill="#e4e9f2">
+      Юридическая консультация
+    </text>
+    <!-- Точка-статус -->
+    <circle cx="345" cy="25" r="5" fill="#6ea997"/>
+    <text x="330" y="30" text-anchor="end" font-family="-apple-system, sans-serif" font-size="12" fill="#6ea997">
+      ● готово
+    </text>
+
+    <!-- User bubble -->
+    <rect x="80" y="80" width="280" height="40" rx="14"
+          fill="rgba(16, 163, 186, 0.55)"/>
+    <text x="100" y="105" font-family="-apple-system, sans-serif" font-size="13" fill="#ffffff" opacity="0.95">
+      Соседи залили квартиру…
+    </text>
+
+    <!-- Bot bubble — структура ответа -->
+    <rect x="20" y="140" width="340" height="200" rx="14"
+          fill="rgba(255, 255, 255, 0.04)" stroke="rgba(16, 163, 186, 0.18)"/>
+
+    <text x="40" y="170" font-family="-apple-system, sans-serif" font-size="10" font-weight="600" fill="#737f97" letter-spacing="1">
+      КВАЛИФИКАЦИЯ
+    </text>
+    <text x="40" y="190" font-family="-apple-system, sans-serif" font-size="13" font-weight="500" fill="#e4e9f2">
+      Возмещение ущерба от залива
+    </text>
+
+    <text x="40" y="220" font-family="-apple-system, sans-serif" font-size="10" font-weight="600" fill="#737f97" letter-spacing="1">
+      НОРМЫ
+    </text>
+    <text x="40" y="240" font-family="-apple-system, sans-serif" font-size="13" font-weight="500" fill="#e4e9f2">
+      ст. 15, 1064 ГК РФ
+    </text>
+
+    <text x="40" y="270" font-family="-apple-system, sans-serif" font-size="10" font-weight="600" fill="#737f97" letter-spacing="1">
+      КЛЮЧЕВЫЕ СРОКИ
+    </text>
+    <text x="40" y="290" font-family="-apple-system, sans-serif" font-size="13" font-weight="500" fill="#e4e9f2">
+      ● 10 дней — ответ · ● 3 года — иск
+    </text>
+
+    <!-- Подвал карточки -->
+    <rect x="0" y="345" width="380" height="35" rx="0"
+          fill="rgba(0, 0, 0, 0.18)"/>
+    <text x="20" y="367" font-family="-apple-system, sans-serif" font-size="11" fill="#6ea997">
+      ✓ Проверено по 2 источникам
+    </text>
+    <text x="360" y="367" text-anchor="end" font-family="-apple-system, sans-serif" font-size="11" fill="#737f97">
+      ≈ 42 сек
+    </text>
+  </g>
+</svg>

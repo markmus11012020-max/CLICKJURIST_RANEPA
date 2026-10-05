@@ -27,8 +27,10 @@ import requests
 
 # --- 1. Маскировка ПДн в логах ------------------------------------------------
 _PII_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
-    # Паспорт РФ: 45 06 123456 / 4506 123456
-    (re.compile(r"\b\d{2}\s?\d{2}\s?\d{6}\b"), "[PASSPORT]"),
+    # Паспорт РФ: 45 06 123456. Разделители ОБЯЗАТЕЛЬНЫ: с опциональными
+    # шаблон совпадал с любым 10-значным числом, из-за чего ИНН и прочие
+    # идентификаторы помечались как паспорт, а правило ниже не срабатывало.
+    (re.compile(r"\b\d{2}\s+\d{2}\s+\d{6}\b"), "[PASSPORT]"),
     # Телефон: +7 (999) 123-45-67, 8-999-123-45-67, 79991234567
     (re.compile(r"(?:\+7|8)[\s\-()]*\d{3}[\s\-()]*\d{3}[\s\-]*\d{2}[\s\-]*\d{2}"), "[PHONE]"),
     # E-mail
@@ -52,6 +54,21 @@ def redact_text(text: str) -> str:
     return result
 
 
+def _redact_arg(value: object) -> object:
+    """Вычистить один аргумент записи, СОХРАНИВ его тип.
+
+    Важно: приводить всё к ``str`` нельзя. Подстановка через ``%``
+    форматирует аргументы по месту (``"%d" % "92"`` → TypeError), поэтому
+    числа, булевы значения и ``None`` возвращаются как есть. ПДн в них
+    быть не может, а тип нужен самому шаблону сообщения.
+    """
+    if isinstance(value, str):
+        return redact_text(value)
+    if isinstance(value, (int, float, bool)) or value is None:
+        return value
+    return redact_text(str(value))
+
+
 class PIIRedactingFilter(logging.Filter):
     """Фильтр, который вычищает ПДн из сообщений журнала."""
 
@@ -62,11 +79,10 @@ class PIIRedactingFilter(logging.Filter):
             if record.args:
                 if isinstance(record.args, dict):
                     record.args = {
-                        key: redact_text(str(value))
-                        for key, value in record.args.items()
+                        key: _redact_arg(value) for key, value in record.args.items()
                     }
                 else:
-                    record.args = tuple(redact_text(str(arg)) for arg in record.args)
+                    record.args = tuple(_redact_arg(arg) for arg in record.args)
         except Exception:  # pragma: no cover — журнал не должен ломать приложение
             return True
         return True
@@ -88,7 +104,7 @@ class JsonFormatter(logging.Formatter):
             "level": record.levelname,
             "service": self.service,
             "logger": record.name,
-            "message": record.getMessage(),
+            "message": _safe_message(record),
         }
         # Единственный идентификатор пользователя, допустимый в логах, — UUID сессии
         session_id = getattr(record, "session_id", None)
@@ -101,6 +117,20 @@ class JsonFormatter(logging.Formatter):
         if record.exc_info:
             payload["exc_info"] = self.formatException(record.exc_info)
         return json.dumps(payload, ensure_ascii=False)
+
+
+def _safe_message(record: logging.LogRecord) -> str:
+    """Текст записи без риска уронить логирование.
+
+    ``record.getMessage()`` подставляет аргументы через ``%`` и падает,
+    если внешняя библиотека (httpx, uvicorn) передаёт не тот тип — например,
+    код ответа строкой при шаблоне ``%d``. Ошибка форматирования не должна
+    превращаться в потерю логов, поэтому используем запасной вариант.
+    """
+    try:
+        return record.getMessage()
+    except Exception:  # pragma: no cover — зависит от версии внешних пакетов
+        return f"{record.msg} {record.args!r}"
 
 
 # --- 3. Отправка в Yandex Cloud Logging --------------------------------------

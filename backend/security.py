@@ -61,6 +61,18 @@ def compute_session_hash(ip: str, fingerprint: str) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
+def compute_ip_hash(ip: str) -> str:
+    """Построить хеш сетевого уровня — без отпечатка браузера.
+
+    Используется как второй, независимый ключ бесплатного лимита: отпечаток
+    браузера клиент контролирует сам (заголовок ``X-Client-Fingerprint``),
+    а IP подменён быть не может. Префикс ``ip-level|`` гарантирует, что
+    значения этого хеша никогда не совпадут с ``session_hash``.
+    """
+    payload = f"ip-level|{ip}|{settings.SESSION_HASH_SALT}"
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
 def anonymized_session_id(session_hash: str) -> str:
     """Превратить хеш сессии в анонимизированный UUID для логов.
 
@@ -84,3 +96,15 @@ def session_context(request: Request) -> tuple[str, str, str]:
     fingerprint = client_fingerprint(request)
     session_hash = compute_session_hash(ip, fingerprint)
     return session_hash, anonymized_session_id(session_hash), ip
+
+
+def quota_keys(request: Request) -> tuple[str, str]:
+    """Вернуть пару ключей бесплатного лимита ``(session_hash, ip_hash)``.
+
+    Бесплатный запрос засчитывается сразу по обоим ключам, поэтому подмена
+    отпечатка браузера или очистка хранилища не выдаёт новый бесплатный
+    запрос: сетевой ключ остаётся прежним. Оба значения — необратимые
+    хеши с солью, сырой IP нигде не сохраняется (152-ФЗ).
+    """
+    ip = client_ip(request)
+    return compute_session_hash(ip, client_fingerprint(request)), compute_ip_hash(ip)

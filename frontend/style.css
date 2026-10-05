@@ -73,6 +73,10 @@
 
 
 
+  --warn: #d9b779;
+
+
+
   --radius: 16px;
 
 
@@ -119,6 +123,9 @@
 
 html, body { margin:0; padding:0; min-height:100vh; font-family: var(--font-display); font-size:16px; line-height:1.6; color:var(--text); background: radial-gradient(120% 90% at 18% -12%, #1c2438 0%, var(--bg-1) 46%, var(--bg-0) 100%) fixed; }
 
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
 
 
 a { color: var(--accent); text-decoration: none; }
@@ -133,11 +140,32 @@ h1,h2,h3 { margin:0 0 12px; letter-spacing:-.01em; font-weight:700; }
 
 
 
-h1 { font-size: clamp(34px, 5vw, 56px); line-height:1.08; background: linear-gradient(115deg, #f2f9ff 30%, var(--accent-soft) 78%, var(--accent-strong) 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+h1 {
+  font-size: clamp(34px, 5vw, 56px);
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  background: linear-gradient(115deg, #f2f9ff 30%, var(--accent-soft) 78%, var(--accent-strong) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Каждая строка заголовка — отдельный блочный элемент с явным
+   margin-bottom, чтобы десцендер «я» НЕ наезжал на аксендер
+   следующей строки. <br> ушёл — span.h1-line даёт контроль
+   над каждой линией отдельно. */
+.h1-line {
+  display: block;
+  padding-bottom: 0.18em;
+}
+
+.h1-line:last-child {
+  padding-bottom: 0;
+}
 
 
 
-h2 { font-size: clamp(22px, 3vw, 28px); }
+h2 { font-size: clamp(22px, 3vw, 28px); line-height: 1.25; letter-spacing: -0.005em; }
 
 
 
@@ -343,6 +371,95 @@ main { max-width: var(--max-width); margin:0 auto; padding: 28px 22px 80px; }
 
 .nav-links a:hover { color: var(--text); text-decoration: none; }
 
+/* ===== Гамбургер-навигация (≤760px) =========================================
+   На узких экранах nav-links скрывается, появляется кнопка-гамбургер.
+   При клике открывается выпадающая панель с теми же ссылками. */
+.nav-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 5px;
+  width: 44px;
+  height: 44px;
+  margin-left: 8px;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
+}
+
+.nav-toggle:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(var(--accent-rgb), 0.4); }
+
+.nav-toggle__bar {
+  display: block;
+  width: 18px;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+  transition: transform .25s ease, opacity .2s ease;
+}
+
+.nav-toggle[aria-expanded="true"] .nav-toggle__bar:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+.nav-toggle[aria-expanded="true"] .nav-toggle__bar:nth-child(2) {
+  opacity: 0;
+}
+.nav-toggle[aria-expanded="true"] .nav-toggle__bar:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+.nav-drawer {
+  display: none;
+  position: sticky;
+  top: 64px;
+  z-index: 25;
+  background: rgba(17, 22, 37, 0.95);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--line);
+  padding: 8px 0;
+}
+
+.nav-drawer.is-open {
+  display: block;
+  animation: drawer-slide .22s ease-out;
+}
+
+@keyframes drawer-slide {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.nav-drawer__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0 16px;
+}
+
+.nav-drawer__nav a {
+  display: block;
+  padding: 14px 12px;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 500;
+  border-radius: 10px;
+  text-decoration: none;
+  transition: background .15s ease;
+}
+
+.nav-drawer__nav a:hover,
+.nav-drawer__nav a:focus-visible {
+  background: rgba(var(--accent-rgb), 0.12);
+  outline: none;
+}
+
+.nav-drawer__nav a + a { border-top: 1px solid var(--line); }
+
 
 
 .session-chip { display:inline-flex; align-items:center; gap:8px; padding:6px 12px; border-radius:999px; background:rgba(255,255,255,.06); border:1px solid var(--line); font-size:13px; color:var(--text-soft); }
@@ -357,7 +474,1008 @@ main { max-width: var(--max-width); margin:0 auto; padding: 28px 22px 80px; }
 
 
 
-.hero { padding:80px 0 60px; text-align:center; }
+.hero { padding: 56px 0 40px; text-align: center; }
+
+/* ===== Двухколоночный hero ====================================================
+   На десктопе (≥1100px) hero делится на две колонки: слева — текст и CTA,
+   справа — mock-карточка результата консультации. На меньших экранах —
+   одна колонка, центрирование сохраняется. */
+.hero__inner { display: block; }
+
+@media (min-width: 1100px) {
+  .hero {
+    text-align: left;
+    padding: 32px 0 56px;
+  }
+  .hero__inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    gap: 60px;
+    align-items: center;
+  }
+  .hero__text { max-width: 580px; }
+  .hero__text .hero-tags { justify-content: flex-start; }
+  .hero__text .hero-cta { justify-content: flex-start; }
+  .hero__text .hero-promo { margin-left: 0; }
+  .hero__text h1 br { display: none; }
+}
+
+/* ===== Mock-карточка результата консультации =================================
+   Демонстрирует продукт до покупки: пользователь видит, в каком виде он
+   получит ответ. Карточка плавно «парит» — лёгкая тень + glow позади. */
+.hero__visual {
+  position: relative;
+  margin-top: 24px;
+}
+
+@media (min-width: 1100px) {
+  .hero__visual { margin-top: 0; }
+}
+
+.hero__visual-glow {
+  position: absolute;
+  inset: -20% -10% -10% -10%;
+  background: radial-gradient(ellipse at center, rgba(var(--accent-rgb), 0.35) 0%, transparent 65%);
+  filter: blur(40px);
+  z-index: -1;
+  opacity: 0.9;
+}
+
+.consult-card {
+  position: relative;
+  padding: 0;
+  border-radius: 22px;
+  background: linear-gradient(180deg, #1a2238 0%, #141c2e 100%);
+  border: 1px solid rgba(var(--accent-rgb), 0.30);
+  box-shadow:
+    0 30px 60px -25px rgba(0, 0, 0, 0.6),
+    0 12px 28px -10px rgba(var(--accent-rgb), 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  /* Никаких transform на карточке в покое: даже rotate(-0.4deg) даёт
+     субпиксельный рендеринг текста (мыло). Визуальный «наклон» даём
+     через декоративный ::before-уголок (см. ниже). */
+  overflow: hidden;
+  transition: transform .35s var(--cj-ease, cubic-bezier(0.22, 0.61, 0.36, 1)),
+              box-shadow .35s var(--cj-ease, cubic-bezier(0.22, 0.61, 0.36, 1));
+}
+
+/* Декоративный «отогнутый уголок» в правом верхнем — даёт ощущение
+   лёгкой «открытости» карточки без subpixel-размытия текста. */
+.consult-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(
+    225deg,
+    rgba(var(--accent-rgb), 0.18) 0%,
+    rgba(var(--accent-rgb), 0.04) 40%,
+    transparent 41%
+  );
+  border-top-right-radius: 22px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.consult-card:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 36px 70px -25px rgba(0, 0, 0, 0.7),
+    0 14px 32px -10px rgba(var(--accent-rgb), 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10);
+}
+
+.consult-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.18), rgba(var(--accent-rgb), 0.05));
+  border-bottom: 1px solid rgba(var(--accent-rgb), 0.20);
+  font-size: 14px;
+}
+
+.consult-card__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.consult-card__shield {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: rgba(var(--accent-rgb), 0.18);
+  color: var(--accent-soft);
+}
+
+.consult-card__title { letter-spacing: 0.01em; }
+
+.consult-card__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(110, 169, 151, 0.12);
+  color: var(--good);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.consult-card__status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--good);
+  box-shadow: 0 0 0 3px rgba(110, 169, 151, 0.25);
+}
+
+.consult-card__body {
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.consult-card__msg {
+  padding: 12px 16px;
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.45;
+  max-width: 92%;
+}
+
+.consult-card__msg p { margin: 0; color: var(--text); }
+
+.consult-card__msg--user {
+  align-self: flex-end;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+  color: #ffffff;
+  border-bottom-right-radius: 4px;
+  box-shadow: 0 6px 16px -8px rgba(var(--accent-rgb), 0.6);
+  /* Разрешаем пузырю расти на ширину контента, чтобы короткие вопросы
+     не растягивались на всю ширину карточки (раньше «Соседи залили
+     квартиру, УК отказывается…» не влезало и обрезалось). */
+  max-width: 80%;
+  width: auto;
+}
+
+.consult-card__msg--user p { color: #ffffff; }
+
+.consult-card__msg--bot {
+  align-self: flex-start;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(var(--accent-rgb), 0.18);
+  border-bottom-left-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 100%;
+}
+
+.consult-card__block {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.42fr) 1fr;
+  gap: 16px;
+  padding: 8px 0;
+  border-bottom: 1px dashed rgba(var(--accent-rgb), 0.18);
+  align-items: baseline;
+}
+
+.consult-card__block:last-of-type { border-bottom: 0; }
+
+.consult-card__block-label {
+  color: var(--text-mute);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+
+.consult-card__block-value {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.45;
+  /* Подсказка браузеру: это сплошной текст, без подсветки/эффектов.
+     Отключает потенциально размытые слои компоновки. */
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.consult-card__checklist {
+  margin-top: 4px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(var(--accent-rgb), 0.08);
+  border: 1px solid rgba(var(--accent-rgb), 0.18);
+}
+
+.consult-card__checklist-title {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent-soft);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.consult-card__checklist-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.consult-card__checklist-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.consult-card__dot {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  margin-top: 3px;
+  border: 1.5px solid rgba(var(--accent-rgb), 0.55);
+  background: rgba(var(--accent-rgb), 0.12);
+}
+
+/* === Чипы для норм ============================================================
+   Заменяют прежний плоский текст «ст. 15, 1064 ГК РФ» — каждая статья
+   становится отдельным элементом, который:
+     • можно раскрыть / сделать кликабельным (переход к полному тексту);
+     • он переносится на новую строку, а не выходит за край карточки;
+     • визуально показывает «вот конкретная норма», а не «вот каша текста».
+   Фон — полупрозрачный циан, бордюр чуть ярче. */
+.consult-card__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.consult-card__chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(var(--accent-rgb), 0.14);
+  border: 1px solid rgba(var(--accent-rgb), 0.32);
+  color: var(--accent-soft);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* === Ключевые сроки с цветовой индикацией ====================================
+   Каждый срок — отдельная строка с цветной точкой слева:
+       🟢 зелёный — срок «мягкий», не критично (10 дней на ответ)
+       🟡 жёлтый  — срок «жёсткий», пропустишь — потеряешь (3 года на иск)
+       🔴 красный — срок «горит» (редко, в основном для апелляций)
+   Цвета берём из токенов палитры, чтобы не плодить хардкод. */
+.consult-card__deadlines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.consult-card__deadlines li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.consult-card__deadlines li strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.consult-card__deadline-dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  /* Мягкое свечение по цвету точки — помогает «увидеть» серьёзность срока
+     даже без вчитывания текста. */
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.04);
+}
+
+.consult-card__deadline-dot--green {
+  background: var(--good);
+  box-shadow: 0 0 0 3px rgba(var(--good), 0.15);
+}
+
+.consult-card__deadline-dot--yellow {
+  background: var(--warn);
+  box-shadow: 0 0 0 3px rgba(var(--warn), 0.15);
+}
+
+.consult-card__deadline-dot--red {
+  background: var(--danger);
+  box-shadow: 0 0 0 3px rgba(var(--danger), 0.15);
+}
+
+/* === Прогноз: процент + горизонтальная шкала =================================
+   Шкала заполняется на ``width: <p>%`` через inline-style. Цвет бара
+   зависит от шансов: высокие (зелёный) / средние (жёлтый) / низкие
+   (красный). Здесь показываем только зелёный как пример. */
+.consult-card__probability {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.consult-card__bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(148, 168, 200, 0.18);
+  overflow: hidden;
+  position: relative;
+}
+
+.consult-card__bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s var(--cj-ease, cubic-bezier(0.22, 0.61, 0.36, 1));
+}
+
+.consult-card__bar-fill--green {
+  background: linear-gradient(90deg, var(--good), #8de7b8);
+}
+
+.consult-card__bar-fill--yellow {
+  background: linear-gradient(90deg, var(--warn), #f0c98a);
+}
+
+.consult-card__bar-fill--red {
+  background: linear-gradient(90deg, var(--danger), #d8a2a2);
+}
+
+.consult-card__probability-value {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* === План действий (бывший «чек-лист») =======================================
+   Упорядоченный список с пронумерованными маркерами — это уже не «набор
+   напоминаний», а конкретная последовательность шагов, которые надо
+   пройти. Поэтому ``<ol>``, а не ``<ul>``. */
+.consult-card__plan {
+  margin-top: 4px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(var(--accent-rgb), 0.08);
+  border: 1px solid rgba(var(--accent-rgb), 0.18);
+}
+
+.consult-card__plan-title {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent-soft);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.consult-card__plan-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  counter-reset: plan;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.consult-card__plan-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  line-height: 1.5;
+}
+
+.consult-card__plan-num {
+  flex-shrink: 0;
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: rgba(var(--accent-rgb), 0.22);
+  color: var(--accent-soft);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  margin-top: 1px;
+}
+
+.consult-card__foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  border-top: 1px solid rgba(var(--accent-rgb), 0.18);
+  background: rgba(0, 0, 0, 0.15);
+  font-size: 12px;
+  color: var(--text-soft);
+}
+
+.consult-card__verify {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--good);
+}
+
+.consult-card__time { color: var(--text-mute); font-variant-numeric: tabular-nums; }
+
+/* ===== Степпер 1→2→3 =======================================================
+   Визуальный прогресс шагов над карточками. Текущий шаг подсвечен акцентным
+   цветом, остальные — приглушённые. На широких экранах степпер естественно
+   «встаёт» в первую строку трёхколоночной сетки (см. .steps-grid). */
+.stepper {
+  list-style: none;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  margin: 0 0 28px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(10px);
+  overflow: hidden;
+}
+
+.stepper__item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 22px;
+  color: var(--text-mute);
+  font-size: 15px;
+  cursor: pointer;
+  transition: background .2s ease, color .2s ease;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.stepper__item:hover { color: var(--text); background: rgba(255, 255, 255, 0.03); }
+
+.stepper__item.is-current {
+  color: var(--text);
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.16), rgba(var(--accent-rgb), 0.06));
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.stepper__item.is-done .stepper__num {
+  background: var(--good);
+  color: var(--bg-0);
+  border-color: var(--good);
+}
+
+.stepper__num {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line-strong);
+  background: rgba(255, 255, 255, 0.04);
+  font-weight: 700;
+  font-size: 14px;
+  transition: background .2s ease, border-color .2s ease, color .2s ease;
+}
+
+.stepper__item.is-current .stepper__num {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg-0);
+  box-shadow: 0 6px 14px -6px rgba(var(--accent-rgb), 0.6);
+}
+
+.stepper__label { font-weight: 600; letter-spacing: .01em; flex: 1; }
+
+.stepper__price {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-soft);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 5px 12px;
+  border-radius: 999px;
+  letter-spacing: 0.01em;
+}
+
+.stepper__item.is-current .stepper__price {
+  background: rgba(var(--accent-rgb), 0.20);
+  color: var(--accent-soft);
+}
+
+.stepper__sep {
+  align-self: center;
+  width: 24px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--line-strong), transparent);
+  flex-shrink: 0;
+}
+
+/* ===== Сетка шагов ==========================================================
+   На десктопе ≥1100px три карточки шагов выстраиваются в три колонки.
+   На меньших — стек по вертикали (старое поведение). */
+.steps-grid { display: block; }
+
+@media (min-width: 1100px) {
+  .steps-grid {
+    display: grid;
+    /* Шаг 1 — рабочая колонка (форма + текстареа + теги), она шире.
+       Шаги 2 и 3 — короткие превью/формы выбора, им достаточно узкой колонки.
+       Раньше было repeat(3, 1fr) — все три одинаковые, что приводило к
+       «пустым» Шагу 2 и Шагу 3 с кнопкой в подвале. */
+    grid-template-columns: 1.6fr 1fr 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+  .steps-grid > #consult,
+  .steps-grid > #checklist,
+  .steps-grid > #document { margin-bottom: 0; }
+}
+
+/* Карточка шага в сетке.
+   .actions НЕ прибивается к низу (раньше был margin-top: auto): кнопка
+   «Составить чек-лист» уезжала в подвал карточки — пользователь её
+   не видел, пока не долистал. Теперь кнопка сидит сразу после
+   описания. Шаги становятся естественной высоты по контенту. */
+.step-card { display: flex; flex-direction: column; height: 100%; }
+.step-card > .result { margin-top: 16px; }
+
+/* ===== Режим «Развернуть на весь экран» для Шага 1 ==========================
+   По клику на «Развернуть» Шаг 1 занимает всю ширину сетки, Шаги 2 и 3
+   сворачиваются в горизонтальную полосу-превью под ним. Удобно для
+   длинного ввода: текстареа становится широкой, кнопки доступны.
+   На мобильных Шаги 2/3 уже занимают всю ширину стека — там разворачивать
+   нечего, поведение идентично обычному. */
+/* ===== Режим «Развернуть» ======================================================
+   При data-expanded="true" вся сетка шагов перестраивается в ОДНУ колонку:
+   все три шага (`#consult`, `#checklist`, `#document`) стекаются вертикально
+   во всю ширину. Это решает проблему «при развёрнутом Шаге 1 — Шаги 2 и 3
+   теряют функциональность»: в обоих режимах один и тот же набор
+   обработчиков (`runQuery`, `runChecklist`, `runDocument`) — отличается
+   только CSS-layout. Правки в одном месте работают в обоих режимах.
+
+   Поведение:
+     • Шаг 1 — шире, textarea крупнее, общие отступы больше («дышит»).
+     • Шаги 2 и 3 — полноразмерные карточки, кнопки и формы работают.
+     • Степпер сверху показывает текущий шаг — пользователь видит, где он.
+
+   Семантика для скринридеров: aria-pressed на кнопке + явный текст
+   «Свернуть». */
+.steps-grid[data-expanded="true"] {
+  display: grid;
+  grid-template-columns: 1fr !important;
+  gap: 24px;
+}
+
+.steps-grid[data-expanded="true"] > #consult,
+.steps-grid[data-expanded="true"] > #checklist,
+.steps-grid[data-expanded="true"] > #document {
+  /* Полная ширина родителя; раньше здесь стоял max-height: 80px + overflow:
+     hidden, который физически обрезал кнопки шагов 2/3. Теперь — никаких
+     ограничений высоты, карточки растягиваются по содержимому. */
+  grid-column: 1 / -1;
+  max-height: none;
+  overflow: visible;
+  opacity: 1;
+}
+
+/* В развёрнутом режиме Шаг 1 — крупнее и просторнее, чтобы было ради чего
+   разворачивать: больше воздуха вокруг, textarea крупнее, шрифт крупнее. */
+.steps-grid[data-expanded="true"] > #consult {
+  padding: 36px;
+}
+
+.steps-grid[data-expanded="true"] > #consult > .field textarea {
+  min-height: 180px;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+/* В развёрнутом режиме у карточек Шагов 2 и 3 добавляем немного
+   вертикального дыхания между блоками превью и кнопками. */
+.steps-grid[data-expanded="true"] > #checklist .step-preview,
+.steps-grid[data-expanded="true"] > #document .step-preview {
+  margin-bottom: 18px;
+}
+
+/* Шаг 1 — рабочая колонка, ей нужен воздух вокруг формы. Сокращаем
+   вертикальные отступы внутри карточки, чтобы длинная форма не
+   растягивалась на 700 px и кнопка оставалась в зоне видимости. */
+#consult { padding: 24px; }
+#consult > .card-sub { margin-bottom: 14px; }
+#consult > .step-preview { margin: 0 0 14px; }
+#consult > .field { margin-bottom: 14px; }
+#consult > .field textarea { min-height: 100px; }
+#consult > .quick-tags { margin: 0 0 14px; }
+#consult > .actions { margin-top: 4px; padding-top: 12px; border-top: 1px dashed rgba(var(--accent-rgb), 0.20); }
+
+/* Шаги 2 и 3 — короткие карточки. Уменьшаем их padding и отступы. */
+#checklist,
+#document { padding: 22px; }
+#checklist > .card-sub,
+#document > .card-sub { margin-bottom: 14px; }
+#checklist > .actions,
+#document > .actions { margin-top: 12px; }
+#checklist > .step-preview--list,
+#document > .step-preview--doc { margin-top: 0; margin-bottom: 14px; }
+#document > .field { margin-bottom: 14px; }
+#document > .step-disclaimer { margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(var(--accent-rgb), 0.20); }
+
+/* ===== Превью результата в карточке шага ===================================
+   Показывает формат продукта до его генерации: пользователь с первого
+   взгляда понимает, что получит на выходе. Уменьшает «пустоту» формы. */
+.step-preview {
+  margin: 16px 0 18px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: rgba(var(--accent-rgb), 0.05);
+  border: 1px solid rgba(var(--accent-rgb), 0.18);
+  font-size: 14px;
+}
+
+/* ===== Блок «Почему нам доверяют» ==========================================
+   Социальное доказательство: четыре цифры-фичи в ряд. Крупные цифры в акцентном
+   цвете, подпись под ними. На узких экранах сжимается в 2×2. */
+.trust {
+  margin: 48px 0 24px;
+  padding: 32px 24px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015));
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(10px);
+}
+
+.trust__title {
+  text-align: center;
+  margin: 0 0 24px;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-soft);
+  letter-spacing: 0.02em;
+}
+
+.trust__grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 760px) {
+  .trust__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.trust__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 18px 12px;
+  border-radius: 16px;
+  background: rgba(var(--accent-rgb), 0.06);
+  border: 1px solid rgba(var(--accent-rgb), 0.18);
+  transition: transform .2s ease, border-color .2s ease;
+}
+
+.trust__card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(var(--accent-rgb), 0.35);
+}
+
+.trust__num {
+  font-size: 28px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent-soft), var(--accent-strong));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.01em;
+}
+
+.trust__caption {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--text-soft);
+  line-height: 1.4;
+}
+
+/* ===== FAQ-аккордеон ========================================================
+   Частые вопросы вынесены в отдельную секцию между trust-блоком и юридическим
+   текстом. Используем нативный <details>, чтобы не тащить JS-логику. */
+.faq {
+  margin: 32px 0 24px;
+  padding: 32px 28px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015));
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(10px);
+}
+
+.faq__title {
+  margin: 0 0 20px;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.01em;
+}
+
+.faq__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.faq__item {
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--line);
+  transition: background .2s ease, border-color .2s ease;
+}
+
+.faq__item[open] {
+  background: rgba(var(--accent-rgb), 0.06);
+  border-color: rgba(var(--accent-rgb), 0.30);
+}
+
+.faq__item summary {
+  cursor: pointer;
+  padding: 16px 20px;
+  font-weight: 500;
+  font-size: 15px;
+  color: var(--text);
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.faq__item summary::-webkit-details-marker { display: none; }
+
+.faq__item summary::after {
+  content: "+";
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--accent-soft);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  transition: transform .25s ease, background .2s ease;
+}
+
+.faq__item[open] summary::after {
+  content: "−";
+  background: rgba(var(--accent-rgb), 0.20);
+  transform: rotate(180deg);
+}
+
+.faq__item > p {
+  margin: 0;
+  padding: 0 20px 18px;
+  color: var(--text-soft);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.step-preview-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  padding: 6px 0;
+  border-bottom: 1px dashed rgba(var(--accent-rgb), 0.18);
+}
+.step-preview-row:last-child { border-bottom: 0; }
+
+.step-preview-label {
+  color: var(--text-mute);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.step-preview-value {
+  color: var(--text);
+  font-weight: 500;
+  text-align: right;
+}
+
+/* Чипы для норм в step-preview — переносятся, не толкают label. */
+.step-preview-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.step-preview-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(var(--accent-rgb), 0.12);
+  border: 1px solid rgba(var(--accent-rgb), 0.28);
+  color: var(--accent-soft);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* Срок в step-preview: точка + надпись. Выравнивание по правому — чтобы
+   зеркалить label «Ключевые сроки». */
+.step-preview-deadline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.step-preview-deadline-dot {
+  flex-shrink: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.04);
+}
+
+.step-preview-deadline-dot--green {
+  background: var(--good);
+  box-shadow: 0 0 0 3px rgba(var(--good), 0.15);
+}
+
+.step-preview-deadline-dot--yellow {
+  background: var(--warn);
+  box-shadow: 0 0 0 3px rgba(var(--warn), 0.15);
+}
+
+/* Прогноз в step-preview: мини-шкала + короткий текст. */
+.step-preview-probability {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.step-preview-bar {
+  display: inline-block;
+  width: 56px;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(148, 168, 200, 0.18);
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+.step-preview-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--good), #8de7b8);
+}
+
+.step-preview-probability-text {
+  font-variant-numeric: tabular-nums;
+}
+
+.step-preview--list .step-preview-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 6px 0;
+  color: var(--text);
+}
+
+.step-preview--list .step-preview-item--muted { color: var(--text-mute); font-style: italic; }
+
+.step-preview-check {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  margin-top: 2px;
+  border: 1.5px solid rgba(var(--accent-rgb), 0.55);
+  background: rgba(var(--accent-rgb), 0.10);
+  position: relative;
+}
+
+.step-preview-check::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(135deg, transparent 38%, var(--accent-soft) 38%, var(--accent-soft) 48%, transparent 48%, transparent 58%, var(--accent-soft) 58%, var(--accent-soft) 68%, transparent 68%);
+  opacity: 0;
+}
+
+.step-preview--doc summary {
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--accent-soft);
+  list-style: none;
+}
+
+.step-preview--doc summary::-webkit-details-marker { display: none; }
+
+.step-preview--doc summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 8px;
+  transition: transform .2s ease;
+}
+
+.step-preview--doc[open] summary::before { transform: rotate(90deg); }
+
+.step-preview-doc-body {
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.step-preview-doc-title {
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.step-preview-doc-mute {
+  color: var(--text-mute);
+  font-style: italic;
+  font-size: 12px;
+}
 
 
 
@@ -365,33 +1483,81 @@ main { max-width: var(--max-width); margin:0 auto; padding: 28px 22px 80px; }
 
 
 
-.hero-cta { display:flex; justify-content:center; gap:14px; flex-wrap:wrap; margin-bottom:28px; }
+.hero-cta { display:flex; justify-content:center; gap:14px; flex-wrap:wrap; margin-bottom:28px; align-items:center; }
+
+.hero-cta__primary { padding: 16px 32px; font-size: 17px; font-weight: 600; letter-spacing: .01em; }
+
+.hero-cta__arrow { width: 20px; height: 20px; margin-left: 4px; transition: transform .2s ease; }
+
+.hero-cta__primary:hover .hero-cta__arrow { transform: translateX(3px); }
+
+.hero-cta__secondary { padding: 13px 22px; font-size: 15px; }
+
+/* ===== Pill «1-й запрос бесплатно» под CTA =================================
+   Дублируем «бесплатность» рядом с кнопкой — самое ценное обещание страницы
+   должно быть у главного действия, а не в углу шапки. */
+.hero-promo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: -8px 0 24px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(110, 169, 151, 0.10);
+  border: 1px solid rgba(110, 169, 151, 0.35);
+  color: var(--good);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.hero-promo strong { color: var(--good); font-weight: 700; letter-spacing: .01em; }
+
+.hero-promo__icon { width: 18px; height: 18px; flex-shrink: 0; }
 
 
 
-.hero-tags { list-style:none; display:flex; gap:10px; flex-wrap:wrap; justify-content:center; padding:0; margin:0; }
+.hero-tags { list-style:none; display:flex; gap:10px; flex-wrap:wrap; justify-content:center; padding:0; margin:0; max-width: 640px; }
+
+@media (min-width: 1100px) {
+  /* На десктопе hero-tags вытаскиваем из-под узкого max-width .hero__text
+     и растягиваем на всю ширину левой колонки. Без этого теги влезают
+     в 580px контейнер и переносятся в столбик (см. критику). */
+  .hero__text .hero-tags { max-width: none; }
+}
 
 
 
-.hero-tags li { padding:8px 14px; border-radius:999px; background:rgba(255,255,255,.045); border:1px solid rgba(var(--accent-rgb), .22); backdrop-filter: blur(8px); font-size:13px; color: var(--text-soft); }
+.hero-tags li { display:inline-flex; align-items:center; gap:10px; padding:9px 16px; border-radius:999px; background:rgba(var(--accent-rgb), .10); border:1px solid rgba(var(--accent-rgb), .35); backdrop-filter: blur(8px); font-size:14px; color: var(--text); white-space:nowrap; box-shadow: 0 6px 16px -10px rgba(var(--accent-rgb), .45); }
+
+.hero-tag__icon { width:20px; height:20px; flex-shrink:0; color: var(--accent-soft); }
+
+.hero-tags li strong { color: var(--text); font-weight:600; letter-spacing:.01em; }
 
 
 
-.btn { appearance:none; border:1px solid var(--line-strong); background:rgba(255,255,255,.05); color:var(--text); padding:12px 22px; border-radius:12px; font-size:15px; font-weight:600; cursor:pointer; transition: transform .2s ease, background .2s ease, border-color .2s ease, box-shadow .2s ease, color .2s ease; }
-
-
+.btn {
+  appearance: none;
+  border: 1px solid var(--line-strong);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  padding: 12px 22px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  /* Резкость текста: optimizeLegibility + явный AA. Без этого на
+     gradient + box-shadow родителя текст «плывёт» в Chrome/Edge. */
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  font-synthesis: none;
+  transition: transform .2s ease, background .2s ease, border-color .2s ease, box-shadow .2s ease, color .2s ease;
+}
 
 .btn:hover:not(:disabled) { transform: translateY(-1px); background:rgba(255,255,255,.07); border-color:rgba(var(--accent-rgb), .55); }
 
-
-
-/* Primary — индиго-градиент, без жёлтого. Белый текст для контраста на тёмном фоне. */
-
-
-
-.btn.primary { background: linear-gradient(135deg, var(--accent) 0%, var(--accent-deeper) 100%); color:#ffffff; border-color: transparent; box-shadow: 0 10px 26px -14px rgba(var(--accent-rgb), .7), inset 0 0 0 1px rgba(255,255,255,.12); }
-
-
+/* Primary — индиго-градиент, без жёлтого. Белый текст для контраста на тёмном фоне.
+   inset highlight убран: на Windows/Chrome он даёт subpixel-blur текста внутри. */
+.btn.primary { background: linear-gradient(135deg, var(--accent) 0%, var(--accent-deeper) 100%); color:#ffffff; border-color: transparent; box-shadow: 0 10px 26px -14px rgba(var(--accent-rgb), .7); }
 
 .btn.primary:hover:not(:disabled) { background: linear-gradient(135deg, var(--accent-strong) 0%, var(--accent-deeper) 100%); box-shadow: 0 12px 30px -14px rgba(var(--accent-rgb), .85); }
 
@@ -439,9 +1605,127 @@ main { max-width: var(--max-width); margin:0 auto; padding: 28px 22px 80px; }
 
 .card { background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)); border:1px solid var(--line); border-radius:var(--radius-lg); padding:28px; margin-bottom:24px; box-shadow:var(--shadow), inset 0 1px 0 rgba(255,255,255,.07); backdrop-filter: blur(10px); }
 
+/* Шаги 1-3 (консультация → чек-лист → шаблон документа) — увеличенный
+   воздух между карточками, чтобы шаги читались как отдельные этапы. */
+#consult, #checklist, #document { margin-bottom:48px; }
+
 
 
 .card-head { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:8px; }
+
+.card-head__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* Кнопка «Развернуть» на Шаге 1 — заметная, контрастная, с иконкой
+   expand. В исходном состоянии — яркий accent-gradient, как primary CTA;
+   в активном (развёрнутом) — outline-вариант, чтобы было видно,
+   что режим включён. */
+.step-expand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border: 1.5px solid rgba(var(--accent-rgb), 0.55);
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  /* inset highlight убран (давал subpixel-blur текста). Заменили на
+     border + font-weight 700. */
+  box-shadow: 0 6px 16px -8px rgba(var(--accent-rgb), 0.55);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  font-synthesis: none;
+  transition: background .18s var(--cj-ease, cubic-bezier(0.22, 0.61, 0.36, 1)),
+              border-color .18s ease,
+              box-shadow .18s ease,
+              transform .15s ease;
+}
+
+.step-expand:hover {
+  background: linear-gradient(135deg, var(--accent-strong) 0%, var(--accent-deeper) 100%);
+  box-shadow: 0 10px 22px -8px rgba(var(--accent-rgb), 0.65);
+  transform: translateY(-1px);
+}
+
+.step-expand:active { transform: translateY(0) scale(0.97); }
+
+.step-expand:focus-visible {
+  outline: 3px solid rgba(255, 255, 255, 0.30);
+  outline-offset: 2px;
+}
+
+.step-expand[aria-pressed="true"] {
+  /* Активное (развёрнутое) состояние — менее кричащее, чтобы было
+     понятно: «уже развёрнуто, можно свернуть». */
+  background: rgba(var(--accent-rgb), 0.14);
+  color: var(--text);
+  border-color: var(--accent);
+  box-shadow: none;
+}
+
+.step-expand svg {
+  flex-shrink: 0;
+  transition: transform .3s var(--cj-ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
+}
+
+.step-expand[aria-pressed="true"] svg {
+  /* Иконка «сжатия» — повернуть на 180°, чтобы визуально отличалась. */
+  transform: rotate(180deg);
+}
+
+/* === Пульсация кнопки «Развернуть» ===========================================
+   Лёгкое «дыхание» акцентным свечением — мягкое побуждение к первому
+   шагу, без агрессивной анимации. Основано на расширяющемся кольце
+   box-shadow + микро-скейле. Останавливается в трёх случаях:
+     1) кнопка уже развёрнута (``aria-pressed="true"``) — она перестаёт
+        быть CTA и превращается в «Свернуть»;
+     2) hover — пользователь уже обратил внимание, дальше дёргать не надо;
+     3) пользователь просил уменьшить анимации (глобальный гейт ниже
+        автоматически зануляет ``animation-duration``). */
+@keyframes cj-step-expand-pulse {
+  0%, 100% {
+    box-shadow:
+      0 6px 16px -8px rgba(var(--accent-rgb), 0.55),
+      0 0 0 0 rgba(var(--accent-rgb), 0.45);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow:
+      0 10px 22px -8px rgba(var(--accent-rgb), 0.70),
+      0 0 0 10px rgba(var(--accent-rgb), 0);
+    transform: scale(1.04);
+  }
+}
+
+.step-expand:not([aria-pressed="true"]) {
+  animation: cj-step-expand-pulse 1.8s ease-in-out infinite;
+}
+
+/* При hover пульсация уступает место hover-стилям — анимация ставится на
+   паузу, чтобы кольцо box-shadow не «мерцалось» поверх увеличенной тени. */
+.step-expand:not([aria-pressed="true"]):hover {
+  animation-play-state: paused;
+}
+
+/* При фокусе с клавиатуры тоже ставим на паузу: пользователь явно
+   взаимодействует с кнопкой, лишнее движение отвлекает. */
+.step-expand:not([aria-pressed="true"]):focus-visible {
+  animation-play-state: paused;
+}
+
+/* При нажатии тоже пауза: иначе кадры анимации (transform: scale(1.04))
+   перебьют :active-scale(0.97), и клик «не спружинит». */
+.step-expand:not([aria-pressed="true"]):active {
+  animation-play-state: paused;
+}
 
 
 
@@ -485,11 +1769,23 @@ main { max-width: var(--max-width); margin:0 auto; padding: 28px 22px 80px; }
 
 
 
-  .doc-type-row { display:flex; flex-wrap:wrap; gap:10px; margin-top:4px; }
+  .doc-type-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
 
-
-
-  .doc-type-row .doc-type-btn { flex: 1 1 auto; min-width: 140px; padding: 12px 14px; font-size:14px; border-color: rgba(var(--accent-rgb), .32); background: rgba(var(--accent-rgb), .05); }
+  /* Шаг 3 на desktop имеет узкую колонку (~25% ширины сетки), поэтому
+     4 чипа типа документа должны влезать по 2 в ряд. min-width: 0
+     снимает прежнее ограничение 140px, которое заставляло кнопки
+     стекаться по одной. */
+  .doc-type-row .doc-type-btn {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+    padding: 12px 14px;
+    font-size: 14px;
+    font-weight: 600;
+    border-color: rgba(var(--accent-rgb), .32);
+    background: rgba(var(--accent-rgb), .05);
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
 
 
 
@@ -636,11 +1932,18 @@ main { max-width: var(--max-width); margin:0 auto; padding: 28px 22px 80px; }
 
 
 
-.toast { position:fixed; bottom:48px; right:48px; background:var(--bg-2); border:2px solid var(--line-strong); border-radius:24px; padding:24px 36px; font-size:1.75rem; line-height:1.4; color:var(--text); box-shadow:var(--shadow); z-index:70; opacity:0; pointer-events:none; transition: opacity .2s ease, transform .2s ease; transform: translateY(20px) scale(2); transform-origin: bottom right; max-width:720px; }
+/* Toast сидит в ЛЕВОМ нижнем углу — справа внизу расположена чат-бот-панель
+   (right: 24px, width: 440px, z-index: 2147483000). Раньше тост накладывался
+   на панель и был невидим, из-за чего ошибки валидации (например, «сначала
+   получите консультацию») оставались незамеченными и пользователь думал,
+   что кнопка сломана. Левый нижний угол всегда свободен.
+   transform-origin держим в bottom-left, чтобы слайд-ин «вырастал» из своего
+   угла и не дёргался визуально при смене позиции. */
+.toast { position:fixed; bottom:48px; left:48px; background:var(--bg-2); border:2px solid var(--line-strong); border-radius:24px; padding:24px 36px; font-size:1.75rem; line-height:1.4; color:var(--text); box-shadow:var(--shadow); z-index:70; opacity:0; pointer-events:none; transition: opacity .2s ease, transform .2s ease; transform: translateY(20px) scale(2); transform-origin: bottom left; max-width:720px; }
 
 
 
-.toast.show { opacity:1; transform: translateY(0) scale(2); transform-origin: bottom right; }
+.toast.show { opacity:1; transform: translateY(0) scale(2); transform-origin: bottom left; }
 
 
 
@@ -658,31 +1961,84 @@ footer { text-align:center; padding:40px 22px; color:var(--text-mute); font-size
 
 @media (max-width: 760px) {
 
-
-
   .topbar { gap:12px; padding:14px 16px; flex-wrap: wrap; }
 
-
-
+  /* На планшетах/мобиле прячем горизонтальную навигацию и показываем
+     гамбургер — он открывает дровер ниже. */
   .nav-links { display:none; }
 
-
+  .nav-toggle { display: flex; }
 
   .brand-tagline { display:none; }
 
-
-
   .hero { padding:48px 0 36px; }
-
-
 
   .card { padding:22px; }
 
-
-
   main { padding:16px 16px 60px; }
 
+  /* Степпер на узких — вертикальный стек. Сепараторы превращаются в
+     вертикальные тонкие линии или прячутся (flex-direction: column). */
+  .stepper {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 8px;
+  }
 
+  .stepper__item {
+    padding: 14px 16px;
+  }
+
+  .stepper__sep {
+    width: auto;
+    height: 1px;
+    margin: 0 16px;
+    background: linear-gradient(90deg, transparent, var(--line-strong), transparent);
+  }
+
+  /* Трёхколоночная сетка шагов: на планшете — две колонки (1+1 с третьим
+     шагом во всю ширину), на узком — одна колонка. */
+  .steps-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  @media (min-width: 600px) {
+    .steps-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .steps-grid > #document { grid-column: 1 / -1; }
+  }
+
+  .steps-grid > #consult,
+  .steps-grid > #checklist,
+  .steps-grid > #document { margin-bottom: 0; }
+
+  /* На планшете колонки карточек не должны ограничиваться по высоте —
+     иначе длинные результаты будут обрезаны. */
+  .step-card { max-height: none; }
+
+  /* Trust-сетка на 760px уже сжимается в 2×2 — без изменений. */
+
+  /* FAQ — на мобильном ужимаем padding. */
+  .faq { padding: 24px 18px; }
+
+  /* Hero visual — без наклона, полная ширина. */
+  .consult-card {
+    transform: none;
+    max-width: 100%;
+  }
+
+  /* Hero-tags: чуть меньше на мобильном. */
+  .hero-tags li {
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+
+  /* Stepper-сетка показывается вертикально. */
+  .hero-promo { font-size: 13px; padding: 7px 12px; }
 
 }
 
@@ -713,29 +2069,14 @@ footer { text-align:center; padding:40px 22px; color:var(--text-mute); font-size
 
 
   h1 { font-size: clamp(24px, 7vw, 32px); }
-
-
-
   h2 { font-size: clamp(18px, 5vw, 22px); }
-
-
-
   h3 { font-size:15px; }
 
 
 
   .card { padding:16px; border-radius:12px; }
-
-
-
   .field textarea { font-size:14px; }
-
-
-
   .btn { padding:10px 16px; font-size:14px; }
-
-
-
   .quick-tag { font-size:12px; padding:6px 10px; }
 
   /* 6 новых тегов на узких экранах: 2 ряда по 3, без вылезания за границы. */
@@ -760,20 +2101,64 @@ footer { text-align:center; padding:40px 22px; color:var(--text-mute); font-size
   .skeleton-line { height:12px; }
 
   .paywall-card { padding:20px; }
-
-
-
   .paywall-amount { font-size:24px; }
-
-
-
-  .toast { font-size:1.5rem; padding:20px 28px; max-width:560px; bottom:32px; right:32px; border-radius:20px; }
-
-
-
+  .toast { font-size:1.5rem; padding:20px 28px; max-width:560px; bottom:32px; left:32px; border-radius:20px; }
   footer { font-size:12px; padding:24px 16px; }
 
+  /* ===== Мобильная докрутка ==================================================
+       Всё, что ниже — мобильные правки, специфичные для текущих компонентов. */
 
+  /* Hero CTA: кнопки становятся в столбик, primary занимает всю ширину. */
+  .hero-cta { flex-direction: column; gap: 10px; align-items: stretch; }
+  .hero-cta__primary,
+  .hero-cta__secondary { width: 100%; justify-content: center; }
+
+  /* Шапка карточки: на узких переносим цену-бейдж на отдельную строку. */
+  .card-head { flex-wrap: wrap; gap: 8px; }
+  .card-head h2 { flex: 1 0 100%; }
+  .card-head .badge { align-self: flex-start; }
+
+  /* Mock-карточка в hero — компактнее, без фиксированной ориентации. */
+  .consult-card__head { padding: 12px 14px; font-size: 13px; }
+  .consult-card__body { padding: 14px; gap: 10px; }
+  .consult-card__msg { padding: 10px 12px; font-size: 13px; }
+  .consult-card__block { grid-template-columns: 1fr; gap: 4px; }
+  .consult-card__block-label { font-size: 10px; }
+  .consult-card__block-value { font-size: 12px; }
+  .consult-card__chips { gap: 4px; }
+  .consult-card__chip { font-size: 11px; padding: 2px 8px; }
+  .consult-card__deadlines { font-size: 12px; gap: 4px; }
+  .consult-card__probability { gap: 8px; }
+  .consult-card__probability-value { font-size: 12px; }
+  .consult-card__plan { padding: 10px; }
+  .consult-card__plan-title { font-size: 10px; margin-bottom: 6px; }
+  .consult-card__plan-list { font-size: 12px; gap: 5px; }
+  .consult-card__plan-num { width: 18px; height: 18px; font-size: 10px; }
+  .consult-card__foot { padding: 10px 14px; font-size: 11px; }
+
+  /* Trust — на самых узких 1 колонка вместо 2×2. */
+  .trust__grid { grid-template-columns: 1fr; }
+  .trust__card { padding: 14px; }
+  .trust__num { font-size: 24px; }
+
+  /* FAQ — плотнее. */
+  .faq { padding: 20px 14px; }
+  .faq__item summary { padding: 14px 14px; font-size: 14px; }
+  .faq__item > p { padding: 0 14px 14px; font-size: 13px; }
+
+  /* Ступпер: цена-пилюля справа от лейбла, помещаем в одну строку. */
+  .stepper__item { padding: 12px 14px; font-size: 14px; }
+  .stepper__num { width: 26px; height: 26px; font-size: 12px; }
+  .stepper__price { font-size: 12px; padding: 3px 8px; }
+
+  /* Step-preview: ужимаем поля, чтобы влезало на 360px. */
+  .step-preview { padding: 12px 14px; font-size: 13px; }
+  .step-preview-row { gap: 8px; padding: 5px 0; }
+  .step-preview-label { font-size: 11px; }
+  .step-preview-value { font-size: 13px; }
+
+  /* Убираем декоративный glow в hero на мобильном — экономит GPU. */
+  .hero__visual-glow { display: none; }
 
 }
 
@@ -813,38 +2198,75 @@ footer { text-align:center; padding:40px 22px; color:var(--text-mute); font-size
 /* ===== Пакетный тариф «Всё включено» (Шаг 4 ТЗ prompt170926.md) ===== */
 
 .package-cta {
-  margin-top:14px;
+  margin-top:18px;
   margin-bottom:4px;
+  padding-top: 16px;
+  border-top: 1px dashed rgba(var(--accent-rgb), 0.30);
 }
 
 .package-btn {
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:14px;
-  width:100%;
-  padding:14px 20px;
-  border-radius:14px;
-  border:1px solid rgba(var(--accent-rgb), .45);
-  background:linear-gradient(135deg, rgba(var(--accent-rgb), .18) 0%, rgba(var(--accent-rgb), .08) 100%);
-  color:var(--text);
-  font-size:14px;
-  font-weight:600;
-  cursor:pointer;
-  transition: transform .12s ease, background .12s ease, border-color .12s ease;
-  text-align:left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  padding: 16px 22px;
+  border-radius: 16px;
+  border: 1.5px solid rgba(var(--accent-rgb), 0.55);
+  background:
+    linear-gradient(135deg, rgba(var(--accent-rgb), 0.32) 0%, rgba(var(--accent-rgb), 0.12) 100%),
+    radial-gradient(circle at top right, rgba(255, 200, 100, 0.18), transparent 60%);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  /* inset highlight убран: на Windows/Chrome даёт subpixel-blur текста
+     внутри кнопки. */
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  font-synthesis: none;
+  transition: transform .18s var(--cj-ease, cubic-bezier(0.22, 0.61, 0.36, 1)),
+              background .18s ease,
+              border-color .18s ease,
+              box-shadow .18s ease;
+  text-align: left;
+  box-shadow: 0 6px 18px -10px rgba(var(--accent-rgb), 0.50);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Декоративный «знак выгоды» в углу — угловой срез с акцентом. */
+.package-btn::before {
+  content: "ВЫГОДА";
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 3px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  color: #ffffff;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border-bottom-left-radius: 10px;
+  box-shadow: 0 4px 10px -4px rgba(217, 119, 6, 0.5);
 }
 
 .package-btn:hover:not(:disabled) {
-  transform:translateY(-1px);
-  background:linear-gradient(135deg, rgba(var(--accent-rgb), .28) 0%, rgba(var(--accent-rgb), .14) 100%);
-  border-color:var(--accent);
+  transform:translateY(-2px);
+  background:
+    linear-gradient(135deg, rgba(var(--accent-rgb), 0.40) 0%, rgba(var(--accent-rgb), 0.18) 100%),
+    radial-gradient(circle at top right, rgba(255, 200, 100, 0.25), transparent 60%);
+  border-color: var(--accent);
+  box-shadow: 0 12px 28px -12px rgba(var(--accent-rgb), 0.55),
+              inset 0 1px 0 rgba(255, 255, 255, 0.14);
 }
 
 .package-btn-title {
-  font-size:15px;
+  font-size:16px;
   font-weight:700;
   color:var(--text);
+  /* Сдвигаем заголовок, чтобы не наезжал на знак ВЫГОДА в углу. */
+  padding-right: 56px;
 }
 
 .package-btn-sub {
@@ -857,14 +2279,16 @@ footer { text-align:center; padding:40px 22px; color:var(--text-mute); font-size
 
 .package-btn-price {
   flex-shrink:0;
-  padding:6px 14px;
+  padding:8px 18px;
   border-radius:999px;
-  background:rgba(var(--accent-rgb), .22);
-  border:1px solid rgba(var(--accent-rgb), .5);
-  color:var(--accent-soft);
-  font-size:14px;
-  font-weight:700;
+  background:linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+  border:1px solid var(--accent-strong);
+  color:#ffffff;
+  font-size:15px;
+  font-weight:800;
   white-space:nowrap;
+  box-shadow: 0 6px 14px -6px rgba(var(--accent-rgb), 0.55);
+  letter-spacing: 0.01em;
 }
 
 /* ===== Skeleton Loader + Таймер (Шаг 1 ТЗ prompt170926.md) ===== */
@@ -924,80 +2348,951 @@ footer { text-align:center; padding:40px 22px; color:var(--text-mute); font-size
   line-height:1.55;
 }
 
-/* ===== Контрастность текста в аккордеонах (Шаг 5 ТЗ prompt170926.md) ===== */
+/* ===== Сводка-якорь над ответом консультации (Шаг 1) ===== */
 
-.legal-accordion > *:not(summary) {
-  color:var(--text);
-  font-size:13px;
-  line-height:1.6;
+.result-summary {
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));
+  gap:14px;
+  margin:0 0 22px;
+  padding:18px 20px;
+  background:linear-gradient(180deg, rgba(var(--accent-rgb), .07), rgba(var(--accent-rgb), .02));
+  border:1px solid rgba(var(--accent-rgb), .22);
+  border-radius:12px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
 }
 
-.legal-accordion h4 {
-  margin:14px 0 6px;
-  color:var(--accent-soft);
+.summary-item {
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  min-width:0;
+}
+
+.summary-label {
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  color:var(--text-soft);
+  opacity:.75;
+}
+
+.summary-value {
   font-size:14px;
-  font-weight:700;
-}
-
-.legal-accordion p {
-  margin:0 0 10px;
-  color:var(--text);
-}
-
-.legal-accordion code {
-  background:rgba(255,255,255,.08);
-  padding:1px 6px;
-  border-radius:4px;
-  font-size:12px;
-  color:var(--accent-soft);
-}
-
-/* ===== Аккордеоны в подвале (раздел 4.2 ТЗ prompt160926.md) ===== */
-
-.legal-accordion {
-  margin-top:12px;
-  padding:12px 14px;
-  border:1px solid var(--line);
-  border-radius:10px;
-  background:rgba(255,255,255,.025);
-}
-
-.legal-accordion summary {
-  cursor:pointer;
   font-weight:600;
   color:var(--text);
-  font-size:14px;
-  list-style:none;
-  display:flex;
-  align-items:center;
-  gap:8px;
+  line-height:1.4;
+  word-wrap:break-word;
+  overflow-wrap:anywhere;
 }
 
-.legal-accordion summary::-webkit-details-marker {
-  display:none;
-}
-
-.legal-accordion summary::before {
-  content:"▸";
-  color:var(--accent);
-  font-size:12px;
-  transition:transform .15s ease;
-}
-
-.legal-accordion[open] summary::before {
-  transform:rotate(90deg);
-}
-
-.legal-accordion[open] {
-  background:rgba(var(--accent-rgb), .05);
-}
-
-.legal-accordion > *:not(summary) {
-  margin-top:10px;
+.summary-value.is-empty {
   color:var(--text-soft);
-  font-size:13px;
-  line-height:1.55;
+  opacity:.55;
+  font-weight:400;
+}
+
+/* Цветовые акценты для уровня риска. */
+.summary-value.risk-low {
+  color:#3ddc97;
+}
+.summary-value.risk-medium {
+  color:#f4c062;
+}
+.summary-value.risk-high {
+  color:#ff7a7a;
+}
+
+/* ===== Секция «О сервисе» — без аккордеонов, с воздухом между подблоками ===== */
+
+.legal-section {
+  padding:36px 36px 40px;
+}
+
+.legal-section > h2 {
+  margin:0 0 28px;
+  font-size:24px;
+  letter-spacing:-0.01em;
+}
+
+.legal-block {
+  margin-top:32px;
+  padding-top:28px;
+  border-top:1px solid var(--line);
+}
+
+.legal-section > .legal-block:first-of-type {
+  margin-top:8px;
+  padding-top:0;
+  border-top:none;
+}
+
+.legal-block > h3 {
+  margin:0 0 14px;
+  font-size:16px;
+  font-weight:700;
+  color:var(--accent-soft);
+  letter-spacing:-0.005em;
+  line-height:1.3;
+}
+
+.legal-block > p {
+  margin:0 0 12px;
+  color:var(--text-soft);
+  font-size:14px;
+  line-height:1.7;
+}
+
+/* Зазоры внутри «О сервисе»: h3 и следующий за ним текст должны «дышать»,
+   параграфы внутри одного подраздела не должны слипаться. */
+.legal-block > h3 + p,
+.legal-block > h3 + ul { margin-top: 6px; }
+.legal-block > p + p { margin-top: 4px; }
+
+.legal-block > p:last-child {
+  margin-bottom:0;
+}
+
+.legal-block > ul {
+  list-style:none;
+  padding:0;
+  margin:14px 0 0;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.legal-block > ul > li {
+  position:relative;
+  padding-left:22px;
+  color:var(--text-soft);
+  font-size:14px;
+  line-height:1.65;
+}
+
+.legal-block > ul > li::before {
+  content:"";
+  position:absolute;
+  left:2px;
+  top:9px;
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:var(--accent);
+  box-shadow:0 0 0 3px rgba(var(--accent-rgb), .15);
+}
+
+.legal-block > ul > li strong {
+  color:var(--text);
+  font-weight:600;
+}
+
+/* Блок «Безопасность и анонимность данных» — рендерится бэкендом через markdownToHtml,
+   поэтому стилизуем дочерние элементы прицельно, не ломая разметку от API. */
+
+.legal-privacy > #legalPrivacy > h3 {
+  margin:0 0 14px;
+  font-size:16px;
+  font-weight:700;
+  color:var(--accent-soft);
+  letter-spacing:-0.005em;
+  line-height:1.3;
+}
+
+.legal-privacy > #legalPrivacy > p {
+  margin:0 0 12px;
+  color:var(--text-soft);
+  font-size:14px;
+  line-height:1.7;
+}
+
+.legal-privacy > #legalPrivacy > p:last-child {
+  margin-bottom:0;
+}
+
+.legal-privacy > #legalPrivacy > ul {
+  list-style:none;
+  padding:0;
+  margin:14px 0 0;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.legal-privacy > #legalPrivacy > ul > li {
+  position:relative;
+  padding-left:22px;
+  color:var(--text-soft);
+  font-size:14px;
+  line-height:1.65;
+}
+
+.legal-privacy > #legalPrivacy > ul > li::before {
+  content:"";
+  position:absolute;
+  left:2px;
+  top:9px;
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:var(--accent);
+  box-shadow:0 0 0 3px rgba(var(--accent-rgb), .15);
+}
+
+.legal-privacy > #legalPrivacy > ul > li strong {
+  color:var(--text);
+  font-weight:600;
+}
+
+/* Блок «Оператор сервиса» — реквизиты самозанятого. Тот же рендер из
+   markdownToHtml, что и legal-privacy, но визуально выделен рамкой:
+   это «визитная карточка» владельца сервиса, и она должна читаться
+   как самостоятельный блок, а не как часть общего текста. */
+.legal-operator {
+  margin: 18px 0;
+  padding: 16px 18px;
+  border: 1px solid rgba(var(--accent-rgb), 0.20);
+  border-radius: 14px;
+  background: linear-gradient(180deg,
+    rgba(var(--accent-rgb), 0.06) 0%,
+    rgba(var(--accent-rgb), 0.02) 100%);
+}
+
+.legal-operator > #legalOperator > h3 {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent-soft);
+  letter-spacing: -0.005em;
+  line-height: 1.3;
+}
+
+.legal-operator > #legalOperator > p {
+  margin: 0 0 10px;
+  color: var(--text-soft);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.legal-operator > #legalOperator > p:last-child {
+  margin-bottom: 0;
+}
+
+.legal-operator > #legalOperator strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.legal-operator > #legalOperator a {
+  color: var(--accent-soft);
+  text-decoration: underline;
+  text-decoration-color: rgba(var(--accent-rgb), 0.40);
+  text-underline-offset: 3px;
+}
+
+.legal-operator > #legalOperator a:hover {
+  color: var(--text);
+  text-decoration-color: var(--accent);
+}
+
+.legal-disclaimer > .disclaimer {
+  margin:0;
+  color:var(--text-soft);
+  font-size:14px;
+  line-height:1.7;
+  font-style:italic;
+  padding:16px 18px;
+  border-left:3px solid rgba(var(--accent-rgb), .45);
+  background:rgba(var(--accent-rgb), .05);
+  border-radius:0 8px 8px 0;
 }
 
 
 
+
+/* ===== Анимации и микровзаимодействия =======================================
+   Набор keyframes и утилит для плавного появления контента, hover-эффектов,
+   feedback-анимаций (лаунчер, success). Уважает prefers-reduced-motion —
+   глобальный гейт в самом конце этого блока. */
+
+/* Fade-in-up — основной «вход» секций при скролле. Начальное состояние —
+   чуть ниже и прозрачное; при добавлении класса `is-visible` элемент
+   плавно «всплывает». Используется через IntersectionObserver в app.js. */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity .55s cubic-bezier(0.22, 0.61, 0.36, 1),
+              transform .55s cubic-bezier(0.22, 0.61, 0.36, 1);
+  will-change: opacity, transform;
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Вариант: появился справа (для hero-visual) */
+.reveal--right { transform: translateX(28px); }
+.reveal--right.is-visible { transform: none; }
+
+/* Каскадная задержка для группы элементов (карточки шагов, trust-блоки,
+   FAQ-пункты) — задаётся через data-reveal-delay="N" */
+.reveal[data-reveal-delay="1"] { transition-delay: .06s; }
+.reveal[data-reveal-delay="2"] { transition-delay: .12s; }
+.reveal[data-reveal-delay="3"] { transition-delay: .18s; }
+.reveal[data-reveal-delay="4"] { transition-delay: .24s; }
+.reveal[data-reveal-delay="5"] { transition-delay: .30s; }
+.reveal[data-reveal-delay="6"] { transition-delay: .36s; }
+
+/* ===== Hero load-in =========================================================
+   При первой отрисовке hero появляется сразу: текст снизу, визуал справа.
+   Сделано на чистом CSS — без JS-задержек, чтобы не было FOUC. */
+@keyframes cj-hero-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Анимация «выезда» mock-карточки справа. Финиш — БЕЗ rotate, чтобы
+   карточка оставалась ровной: даже маленький поворот даёт subpixel-blur
+   текста внутри (особенно заметно в Chrome на Windows). Лёгкий
+   «наклон» визуально компенсирован декоративным ::before-уголком. */
+@keyframes cj-hero-slide {
+  from { opacity: 0; transform: translateX(28px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.hero__text { animation: cj-hero-rise .7s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+.hero__visual {
+  animation: cj-hero-slide .9s cubic-bezier(0.22, 0.61, 0.36, 1) .15s both;
+}
+
+/* ===== Hover-эффекты карточек ==============================================
+   Лёгкий «лифт» при наведении: карточка приподнимается и подсвечивается. */
+.card,
+.step-card,
+.trust__card,
+.faq__item {
+  transition: transform .25s cubic-bezier(0.22, 0.61, 0.36, 1),
+              box-shadow .25s cubic-bezier(0.22, 0.61, 0.36, 1),
+              border-color .2s ease,
+              background .2s ease;
+}
+
+.trust__card:hover,
+.faq__item:hover {
+  transform: translateY(-2px);
+  border-color: rgba(var(--accent-rgb), 0.30);
+}
+
+/* ===== Primary-кнопка: «дышащее» свечение при hover ========================
+   Тонкий акцентный glow, который пульсирует — без бесконечного повторения,
+   только пока курсор на кнопке. */
+@keyframes cj-cta-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(16, 163, 186, 0.45), 0 10px 26px -14px rgba(var(--accent-rgb), .7); }
+  70%  { box-shadow: 0 0 0 12px rgba(16, 163, 186, 0),    0 14px 32px -14px rgba(var(--accent-rgb), .85); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 163, 186, 0),       0 14px 32px -14px rgba(var(--accent-rgb), .85); }
+}
+
+.btn.primary:hover:not(:disabled) {
+  animation: cj-cta-pulse 1.2s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* ===== Stepper: плавная смена активного шага ===============================*/
+.stepper__item {
+  transition: background .3s cubic-bezier(0.22, 0.61, 0.36, 1),
+              color .3s cubic-bezier(0.22, 0.61, 0.36, 1),
+              box-shadow .3s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.stepper__num {
+  transition: background .3s ease, color .3s ease, border-color .3s ease,
+              transform .35s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow .3s ease;
+}
+
+.stepper__item.is-current .stepper__num { transform: scale(1.08); }
+
+/* ===== Лаунчер чат-бота: пульсация, если есть непрочитанные ================*/
+@keyframes cj-launcher-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(29, 78, 216, 0.50), 0 24px 60px rgba(15, 23, 42, .22); }
+  50%      { box-shadow: 0 0 0 14px rgba(29, 78, 216, 0), 0 24px 60px rgba(15, 23, 42, .22); }
+}
+
+.cj-launcher.has-badge {
+  animation: cj-launcher-pulse 1.6s ease-in-out infinite;
+}
+
+/* ===== Success-анимация для step-карточки после генерации ================
+   При добавлении класса .is-success карточка коротко подсвечивается
+   акцентным цветом — фидбек «готово». Используется после runQuery и т.п. */
+@keyframes cj-card-success {
+  0%   { box-shadow: 0 0 0 0 rgba(16, 163, 186, 0.45), 0 30px 60px -30px rgba(4, 10, 22, .6); }
+  60%  { box-shadow: 0 0 0 8px rgba(16, 163, 186, 0),    0 30px 60px -30px rgba(4, 10, 22, .6); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 163, 186, 0),       0 30px 60px -30px rgba(4, 10, 22, .6); }
+}
+
+.step-card.is-success { animation: cj-card-success 1.2s ease-out; }
+
+/* ===== Toast: slide-in/out ==================================================
+   Переопределяем старое поведение (масштаб 2× при показе): теперь toast —
+   компактный slide-in снизу справа. Класс .show — тот, что выставляет JS
+   (см. dom.js#toast). На остальных страницах toast всё ещё читаем и
+   кликабелен (pointer-events: auto). */
+.toast {
+  position: fixed;
+  bottom: 32px;
+  left: 32px;
+  padding: 16px 22px;
+  border-radius: 14px;
+  background: rgba(20, 26, 41, 0.92);
+  border: 1px solid rgba(110, 169, 151, 0.4);
+  backdrop-filter: blur(14px);
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.4;
+  z-index: 70;
+  transform: translateY(20px);
+  transform-origin: bottom left;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s ease,
+              transform .35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 18px 40px -10px rgba(0, 0, 0, 0.45);
+  max-width: 360px;
+}
+
+.toast.show {
+  transform: none;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.toast.success { border-color: rgba(110, 169, 151, 0.6); }
+.toast.error   { border-color: rgba(201, 138, 138, 0.6); }
+
+/* ===== Skeleton shimmer: «мерцание» загрузки ===============================*/
+@keyframes cj-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-line {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 25%,
+    rgba(var(--accent-rgb), 0.12) 50%,
+    rgba(255, 255, 255, 0.04) 75%
+  );
+  background-size: 200% 100%;
+  animation: cj-shimmer 1.6s ease-in-out infinite;
+}
+
+/* ===== prefers-reduced-motion: глобальный гейт =============================
+   Если пользователь просит уменьшить анимации (настройка ОС/браузера) —
+   отключаем ВСЁ: keyframes, transitions, autoplay анимации. Это критично
+   для пользователей с вестибулярными расстройствами. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .reveal { opacity: 1; transform: none; }
+  .hero__text,
+  .hero__visual { animation: none; }
+}
+/* ===== Подвал сайта ==========================================================
+   Четыре колонки на desktop: бренд / сервис / правовая / оплата.
+   На ≤760px складывается в один столбец. */
+.site-footer {
+  margin-top: 64px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(0, 0, 0, 0.18));
+  border-top: 1px solid var(--line);
+  color: var(--text-soft);
+}
+
+.site-footer__inner {
+  display: grid;
+  /* Бренд — широкая, чтобы описание и соц-иконки не теснились;
+     правовые колонки — одинаковые, чтобы длинные ссылки не переносились
+     на 3 слова; оплата/бейджи — чуть шире для удобства чтения. */
+  grid-template-columns: 1.8fr 1fr 1.1fr 1.2fr;
+  gap: 32px;
+  max-width: var(--max-width, 1080px);
+  margin: 0 auto;
+  padding: 48px 22px 28px;
+}
+
+@media (max-width: 880px) {
+  .site-footer__inner {
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+  }
+}
+
+@media (max-width: 540px) {
+  .site-footer__inner {
+    grid-template-columns: 1fr;
+    gap: 28px;
+    padding: 36px 16px 24px;
+  }
+}
+
+.site-footer__col--brand { max-width: 100%; }
+
+.site-footer__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: var(--text);
+  margin-bottom: 14px;
+}
+
+.site-footer__shield {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(var(--accent-rgb), 0.10);
+  border: 1px solid rgba(var(--accent-rgb), 0.25);
+  flex-shrink: 0;
+}
+
+.site-footer__brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.site-footer__brand-text strong {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.site-footer__brand-text span {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+}
+
+.site-footer__desc {
+  margin: 0 0 16px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-mute);
+}
+
+.site-footer__social {
+  list-style: none;
+  display: flex;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+}
+
+.site-footer__social a {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(148, 168, 200, 0.22);
+  color: var(--text);
+  transition: background .15s ease, border-color .15s ease, transform .15s ease;
+}
+
+.site-footer__social a:hover {
+  background: rgba(var(--accent-rgb), 0.18);
+  border-color: rgba(var(--accent-rgb), 0.40);
+  color: var(--text);
+  transform: translateY(-1px);
+}
+
+.site-footer__title {
+  margin: 0 0 14px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.site-footer__links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.site-footer__links a {
+  color: var(--text-soft);
+  text-decoration: none;
+  transition: color .15s ease;
+}
+
+.site-footer__links a:hover {
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-color: rgba(var(--accent-rgb), 0.45);
+  text-underline-offset: 3px;
+}
+
+.site-footer__col--pay .site-footer__links li {
+  color: var(--text-soft);
+}
+
+.site-footer__col--pay .site-footer__links strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.site-footer__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.site-footer__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(var(--accent-rgb), 0.10);
+  border: 1px solid rgba(var(--accent-rgb), 0.25);
+  color: var(--accent-soft);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.site-footer__legal {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  max-width: var(--max-width, 1080px);
+  margin: 0 auto;
+  padding: 18px 22px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--text-mute);
+}
+
+@media (max-width: 540px) {
+  .site-footer__legal {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 16px;
+  }
+}
+
+.site-footer__copy { font-weight: 500; }
+
+.site-footer__meta { letter-spacing: 0.02em; }
+
+/* ===== Архив консультаций (локальный, без серверной записи) ============
+   Архив хранится ТОЛЬКО в браузере пользователя (152-ФЗ, Zero-Storage):
+   при первом сохранении карточки появляются здесь автоматически. Запись
+   можно открыть (вернёт результат в Шаг 1), пометить избранным (защита
+   от FIFO-чистки) или удалить. Никаких сетевых вызовов — кэш браузера
+   это часть устройства пользователя, и намеренно не реплицируется на
+   сервер.
+   ─────────────────────────────────────────────────────────────────────── */
+.archive {
+  margin: 36px auto 0;
+  padding: 28px 32px;
+  max-width: var(--max-width, 1080px);
+  background: var(--bg-2, rgba(20, 26, 41, 0.55));
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.08));
+  border-radius: 22px;
+  box-shadow: 0 18px 40px -16px rgba(0, 0, 0, 0.4);
+}
+
+.archive__head {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.archive__title {
+  margin: 0;
+  font-size: clamp(22px, 2.4vw, 28px);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text, #e8ecf2);
+}
+
+.archive__counter {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  background: rgba(127, 196, 210, 0.12);
+  border: 1px solid rgba(127, 196, 210, 0.3);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #7fc4d2;
+  letter-spacing: 0.02em;
+}
+
+.archive__notice {
+  margin: 4px 0 18px;
+  padding: 12px 16px;
+  background: rgba(255, 209, 138, 0.06);
+  border-left: 3px solid rgba(255, 209, 138, 0.55);
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-mute, #8a94a3);
+}
+
+.archive__notice strong { color: #ffd18a; }
+
+.archive__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.archive__empty {
+  grid-column: 1 / -1;
+  padding: 28px 22px;
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-mute, #8a94a3);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed var(--line, rgba(255, 255, 255, 0.12));
+  border-radius: 16px;
+}
+
+.archive-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 16px 14px;
+  background: var(--bg-1, rgba(15, 21, 36, 0.65));
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.08));
+  border-radius: 14px;
+  transition: border-color .2s ease, transform .15s ease;
+}
+
+.archive-item:hover {
+  border-color: rgba(127, 196, 210, 0.35);
+  transform: translateY(-1px);
+}
+
+.archive-item.is-favorite {
+  border-color: rgba(255, 209, 138, 0.35);
+  background: linear-gradient(180deg, rgba(255, 209, 138, 0.04), var(--bg-1, rgba(15, 21, 36, 0.65)));
+}
+
+.archive-item__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.archive-item__time {
+  font-size: 12px;
+  color: var(--text-mute, #8a94a3);
+  letter-spacing: 0.01em;
+}
+
+.archive-item__fav {
+  appearance: none;
+  background: transparent;
+  border: 1px solid transparent;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  font-size: 18px;
+  line-height: 1;
+  color: rgba(255, 209, 138, 0.4);
+  cursor: pointer;
+  transition: color .15s ease, background .15s ease, border-color .15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.archive-item__fav:hover {
+  color: rgba(255, 209, 138, 0.9);
+  background: rgba(255, 209, 138, 0.08);
+}
+
+.archive-item.is-favorite .archive-item__fav {
+  color: #ffd18a;
+  background: rgba(255, 209, 138, 0.1);
+}
+
+.archive-item__query {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text, #e8ecf2);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  flex-grow: 1;
+}
+
+.archive-item__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.archive-item__open {
+  font-size: 13px;
+  padding: 7px 14px;
+}
+
+.archive-item__del {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.12));
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--text-mute, #8a94a3);
+  cursor: pointer;
+  transition: color .15s ease, border-color .15s ease, background .15s ease;
+}
+
+.archive-item__del:hover {
+  color: #ff8a8a;
+  border-color: rgba(255, 138, 138, 0.5);
+  background: rgba(255, 138, 138, 0.08);
+}
+
+.archive__footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.archive__clear {
+  font-size: 13px;
+  color: var(--text-mute, #8a94a3);
+}
+
+@media (max-width: 540px) {
+  .archive { padding: 20px 18px; border-radius: 16px; }
+  .archive__list { grid-template-columns: 1fr; }
+}
+
+/* ===== Print-стак-стили =====================================================
+   Чистая печать результатов консультации, чек-листов и документов без
+   элементов управления (чат-бот, кнопки, навигация, футер, степпер).
+   ─────────────────────────────────────────────────────────────────────── */
+@media print {
+  /* Скрываем служебные блоки. */
+  .topbar,
+  .nav-links,
+  .nav-toggle,
+  .stepper,
+  .hero__actions,
+  .hero-cta,
+  .quick-tags,
+  .package-cta,
+  .actions,
+  .result-actions,
+  .archive,
+  .archive-item__fav,
+  .archive-item__del,
+  .site-footer,
+  .paywall,
+  .toast,
+  /* Чат-бот: панель и FAB (используют --cj-z 2147483000). */
+  .cj-window,
+  .cj-launcher,
+  .cj-launcher-btn,
+  /* Любые элементы с явным «не для печати». */
+  [data-no-print] {
+    display: none !important;
+  }
+
+  /* Светлый фон и чёрный текст — стандарт для печати. */
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  main { padding: 0 !important; max-width: 100% !important; }
+
+  /* Карточки шагов и результаты — во всю ширину, без тени и рамок. */
+  .card,
+  .result,
+  .consult-card,
+  .legal-section {
+    background: #ffffff !important;
+    border: 1px solid #cccccc !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    color: #000000 !important;
+  }
+
+  .card-head h2,
+  .card h2,
+  .result h3,
+  .step-card h2 {
+    color: #000000 !important;
+  }
+
+  .card-sub,
+  .step-disclaimer,
+  .step-preview,
+  .doc-type-row,
+  .skeleton-loader,
+  .result-timer,
+  .spinner {
+    display: none !important;
+  }
+
+  a { color: #000000 !important; text-decoration: underline !important; }
+  a[href]::after {
+    content: " (" attr(href) ")";
+    font-size: 11px;
+    color: #555555 !important;
+  }
+
+  pre, code { background: #f5f5f5 !important; color: #000000 !important; }
+
+  .result-body,
+  .checklistResultBody,
+  .documentResultBody,
+  #queryResultBody,
+  #checklistResultBody,
+  #documentResultBody {
+    color: #000000 !important;
+    font-size: 12pt;
+    line-height: 1.5;
+  }
+}

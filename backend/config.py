@@ -55,20 +55,58 @@ class Settings(BaseSettings):
     APP_PORT: int = 8000
     APP_BASE_URL: str = "http://localhost:8000"
     LOG_LEVEL: str = "INFO"
-    CORS_ALLOW_ORIGINS: str = "*"
+    CORS_ALLOW_ORIGINS: str = ""
+    """Список разрешённых Origin через запятую.
+
+    Пусто (по умолчанию) — CORS не нужен вовсе: сайт и API живут на
+    одном домене. Раньше здесь стоял ``*``, что вместе с JWT-cookie
+    (``allow_credentials=True``) означало доступ к API с любого сайта
+    из интернета: браузер всё равно не пускает ``*`` с credentials, но
+    полагаться на это нельзя.
+
+    Для отдельного фронтенда укажите домен явно:
+    ``CORS_ALLOW_ORIGINS=https://site.ru,https://www.site.ru``.
+    """
 
     # --- 1a. Dev Mode: обход платёжного барьера ------------------------------
     # Если ``True`` — backend НИКОГДА не возвращает 402 Payment Required,
     # все запросы пропускаются без списания бесплатного лимита и без
     # проверки оплаты. Используется для локальной отладки сложных
-    # юридических сценариев и нагрузочного тестирования. В production
-    # ОБЯЗАТЕЛЬНО выставить ``False`` через переменную окружения
-    # ``DEV_BYPASS_PAYWALL=false`` (или через Yandex KMS).
-    DEV_BYPASS_PAYWALL: bool = True
+    # юридических сценариев и нагрузочного тестирования.
+    #
+    # ВНИМАНИЕ: значение по умолчанию — ``False``. Раньше здесь стояло
+    # ``True``, из-за чего незадание переменной окружения молча отключало
+    # оплату в production. Включать обход нужно ЯВНО:
+    #   DEV_BYPASS_PAYWALL=true  (только локально или в CI)
+    DEV_BYPASS_PAYWALL: bool = False
 
     # --- 2. 152-ФЗ: идентификация сессии без персональных данных -------------
     SESSION_HASH_SALT: str = "please-change-this-salt"
-    FREE_TIER_REQUESTS: int = 1
+    FREE_TIER_REQUESTS: int = 0
+
+    # --- Anti-abuse: rate-limit на дорогие эндпоинты ------------------------
+    # Дополняет free-tier и оплату: даже платный пользователь не должен иметь
+    # возможность слать 1000 запросов в минуту (скрипт с украденной сессией
+    # или «зомби»-расширение). Два независимых лимита:
+    #   1) per-session — на один браузер/сессию. Окно 1 час. Защищает от
+    #      накрутки конкретным пользователем.
+    #   2) per-IP — на один IP. Окно 1 минута. Защищает от ботнета, который
+    #      перебирает новые session_hash, чтобы получить free-trial.
+    # При срабатывании — 429 Too Many Requests с заголовком ``Retry-After``.
+    RATE_LIMIT_SESSION_PER_HOUR: int = 30
+    RATE_LIMIT_IP_PER_MIN: int = 20
+
+    # Бесплатный лимит на уровне сети (один IP), поверх ``FREE_TIER_REQUESTS``.
+    #
+    # Отключён вместе с ``FREE_TIER_REQUESTS`` (октябрь 2026): бесплатный
+    # trial снят с продакшна, чтобы исключить вектор abuse при росте трафика.
+    # Поля сохранены как резерв — при возврате trial-режима достаточно задать
+    # положительные значения. Зачем второй уровень исторически: ``session_hash``
+    # строится из отпечатка браузера (заголовок ``X-Client-Fingerprint``),
+    # который можно подменить — без сетевого счётчика лимит обходится сменой
+    # заголовка. Значение задаётся конфигурацией и обязано быть >=
+    # ``FREE_TIER_REQUESTS`` (контролируется ``startup_checks.py``).
+    FREE_TIER_IP_REQUESTS: int = 0
 
     # --- 3. Хранилище --------------------------------------------------------
     DATABASE_URL: str = "sqlite:///./data/clickjurist.db"
@@ -144,12 +182,16 @@ class Settings(BaseSettings):
     ROBOKASSA_RESULT_URL: str = "/api/payment/result"
 
     # --- 11. Тарифы ----------------------------------------------------------
-    PRICE_CONSULTATION: int = 99
-    PRICE_CHECKLIST: int = 100
-    PRICE_DOCUMENT: int = 300
+    # Снижены в ~2 раза от прежних (99/100/300/390). Себестоимость одного
+    # запроса упала кратно (LLM-контур стал локальным), поэтому розница
+    # пересмотрена: 49 / 50 / 150 ₽ за отдельные шаги, 195 ₽ за пакет.
+    PRICE_CONSULTATION: int = 49
+    PRICE_CHECKLIST: int = 50
+    PRICE_DOCUMENT: int = 150
     # Пакетный тариф «Решение проблемы под ключ» (раздел 6 ТЗ prompt160926.md).
-    PRICE_PACKAGE_BASIC: int = 390
-    PRICE_PACKAGE_PREMIUM: int = 490
+    # Тарифов ровно один: «премиум»-уровень из ТЗ не был реализован — он
+    # предлагался ботом, но не принимался API и не отображался на сайте.
+    PRICE_PACKAGE_BASIC: int = 195
 
     # --- 12. PDF -------------------------------------------------------------
     PDF_FONT_PATH: str = ""
@@ -198,22 +240,47 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins(self) -> list[str]:
-        """Список разрешённых Origin для CORS (строка через запятую)."""
-        raw = (self.CORS_ALLOW_ORIGINS or "*").strip()
+        """Список Origin для CORS (строка через запятую).
+
+        Пустое значение означает «только свой домен»: это безопасный режим
+        по умолчанию, потому что сайт и API обычно на одном хосте.
+        """
+        raw = (self.CORS_ALLOW_ORIGINS or "").strip()
         if not raw or raw == "*":
-            return ["*"]
+            return [self.app_origin]
         return [item.strip() for item in raw.split(",") if item.strip()]
 
     @property
+    def cors_credentials(self) -> bool:
+        """Разрешены ли credentials (JWT-cookie) для CORS-запросов.
+
+        При ``*`` отправка credentials запрещена: так требует спецификация
+        Fetch. Иначе брокер не отдаст ``Access-Control-Allow-Origin: *`` и
+        запрос с cookie просто не пройдёт.
+        """
+        raw = (self.CORS_ALLOW_ORIGINS or "").strip()
+        return raw not in {"", "*"}
+
+    @property
+    def app_origin(self) -> str:
+        """Origin самого приложения — ``scheme://host`` из ``APP_BASE_URL``."""
+        base = (self.APP_BASE_URL or "http://localhost:8000").rstrip("/")
+        return "/".join(base.split("/", 3)[:3])
+
+    @property
     def prices(self) -> dict[str, int]:
-        """Тарифы в рублях по кодам платных услуг."""
+        """Тарифы в рублях по кодам платных услуг.
+
+        Тариф ``package_premium`` упразднён (на сайте продаётся только пакет
+        за 195 ₽), поэтому в публичный прайс он не попадает: иначе бот и
+        ``/api/prices`` предлагали бы услугу, которой нельзя оплатить.
+        """
         return {
             "consultation": self.PRICE_CONSULTATION,
             "checklist": self.PRICE_CHECKLIST,
             "document": self.PRICE_DOCUMENT,
             "pdf": self.PRICE_DOCUMENT,
             "package_basic": self.PRICE_PACKAGE_BASIC,
-            "package_premium": self.PRICE_PACKAGE_PREMIUM,
         }
 
     @property

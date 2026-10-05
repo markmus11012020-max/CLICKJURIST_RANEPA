@@ -1,0 +1,114 @@
+name: CI
+
+# Проверки запускаются на каждом пуше в main и на каждом pull request.
+# Задача — не допустить попадания в репозиторий кода, который ломает
+# тесты, синтаксис или проверку типов.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Отменять предыдущий прогон в том же ветке — экономит минуты.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Тесты (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Установить Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Установить зависимости
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install pytest httpx
+
+      - name: Тесты
+        env:
+          # Локальные значения по умолчанию: без внешних ключей и сети.
+          APP_ENV: development
+          DEV_BYPASS_PAYWALL: "false"
+          MASKING_PROVIDER: regex
+          ENABLE_WEB_SEARCH: "false"
+          # Квота считается по двум ключам; фиксируем оба, чтобы тесты
+          # бесплатного лимита не зависели от локального .env.
+          FREE_TIER_REQUESTS: "1"
+          FREE_TIER_IP_REQUESTS: "5"
+        run: pytest tests -q
+
+  lint:
+    name: Линтеры и типы
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Установить инструменты
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff mypy
+
+      - name: ruff check
+        run: ruff check backend chatbot tests
+
+      - name: ruff format --check
+        run: ruff format --check backend chatbot tests
+
+  secrets:
+    name: Секреты не в репозитории
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Проверить, что .env и ключи не отслеживаются
+        run: |
+          set -e
+          for f in .env secrets/kms-secrets.b64; do
+            if git ls-files --error-unmatch "$f" >/dev/null 2>&1; then
+              echo "::error::Секрет $f отслеживается git — его нужно убрать из репозитория"
+              exit 1
+            fi
+          done
+          echo "Секреты не отслеживаются — ok"
+
+  build:
+    name: Синтаксис ES-модулей фронтенда
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Проверить синтаксис всех .js
+        run: |
+          set -e
+          failed=0
+          for f in $(find frontend/js chatbot/static/js -name '*.js'); do
+            if ! node --check "$f"; then
+              echo "::error::Синтаксическая ошибка в $f"
+              failed=1
+            fi
+          done
+          exit $failed

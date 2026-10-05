@@ -1,0 +1,83 @@
+[project]
+name = "clickjurist-production"
+version = "2.0.0"
+description = "Юридический ИИ-сервис: мегапайплайн с маскировкой ПДн в контуре РФ, веб-фактчекингом и оплатой Robokassa"
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["venv", ".venv", "data", "secrets", "docs/archive"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "UP",   # pyupgrade
+    "C4",   # comprehensions
+    "SIM",  # simplify
+    "RET",  # return
+    "ARG",  # unused arguments
+    "BLE",  # blind except
+    "S",    # bandit
+]
+ignore = [
+    "E501",    # длину строк контролирует black/ruff formatter
+    "S101",    # assert разрешён: модуль полон проверок в стиле «условие иначе 500»
+    "B008",    # Depends(...) в сигнатуре — принятый паттерн FastAPI
+    "SIM108",  # тернарник вместо if/else не всегда читаем
+    "RET504",  # именованный возврат перед return проще читать
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Тесты: assert — основной инструмент проверки, аргументы фикстур не используются
+"tests/*" = ["S", "ARG", "B011", "SIM117", "E402"]
+# Точка входа: проверки окружения на старте
+"backend/main.py" = ["E402"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["backend", "chatbot"]
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+extend-exclude = '''
+/(
+    venv
+  | \.venv
+  | data
+  | secrets
+)/
+'''
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+disallow_untyped_defs = true
+no_implicit_optional = true
+warn_return_any = true
+exclude = ['venv/', 'data/', 'secrets/']
+
+[[tool.mypy.overrides]]
+# Сторонние пакеты без типов
+module = [
+    "reportlab.*",
+    "requests",
+    "jwt",
+    "esprima",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-ra --strict-markers"
+filterwarnings = [
+    # httpx этой версии логирует код ответа строкой при шаблоне "%d"
+    "ignore::DeprecationWarning",
+]

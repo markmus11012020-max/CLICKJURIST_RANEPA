@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /chatbot/
+
+# Crawl-delay не указываем — для основных поисковиков это не нужно.
+
+Sitemap: /sitemap.xml
+Host: /

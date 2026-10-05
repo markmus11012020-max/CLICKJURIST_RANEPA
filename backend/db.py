@@ -48,6 +48,14 @@ CREATE TABLE IF NOT EXISTS payments (
 CREATE INDEX IF NOT EXISTS idx_payments_session ON payments (session_hash);
 """
 
+_SCHEMA_NETWORK_QUOTA = """
+CREATE TABLE IF NOT EXISTS network_quota (
+    network_hash      TEXT PRIMARY KEY,
+    free_requests_used INTEGER NOT NULL DEFAULT 0,
+    updated_at        TEXT NOT NULL
+);
+"""
+
 _SCHEMA_REQUEST_LOG_SQLITE = """
 CREATE TABLE IF NOT EXISTS request_log (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -148,6 +156,7 @@ class RequestStore:
         statements = [
             _SCHEMA_SESSIONS,
             _SCHEMA_PAYMENTS,
+            _SCHEMA_NETWORK_QUOTA,
             (
                 _SCHEMA_REQUEST_LOG_SQLITE
                 if self.dialect == DIALECT_SQLITE
@@ -220,6 +229,41 @@ class RequestStore:
             "WHERE session_hash = ?",
             (still_free, used, utc_now_iso(), session_hash),
         )
+
+    # --- Сетевой уровень бесплатного лимита ---------------------------------
+    # Второй ключ лимита, не зависящий от отпечатка браузера. Нужен, потому
+    # что отпечаток приходит из клиентского заголовка и может быть подменён.
+
+    def get_network_quota(self, network_hash: str) -> dict[str, Any] | None:
+        """Вернуть запись сетевого счётчика или ``None``."""
+        rows = self._execute(
+            "SELECT * FROM network_quota WHERE network_hash = ?", (network_hash,)
+        )
+        return rows[0] if rows else None
+
+    def network_free_requests_used(self, network_hash: str) -> int:
+        """Сколько бесплатных запросов уже израсходовано в этой сети."""
+        row = self.get_network_quota(network_hash)
+        return int(row["free_requests_used"]) if row else 0
+
+    def can_use_free_request_by_ip(self, network_hash: str) -> bool:
+        """True, если по сетевому ключу ещё есть неиспользованный лимит."""
+        return (
+            self.network_free_requests_used(network_hash)
+            < settings.FREE_TIER_IP_REQUESTS
+        )
+
+    def consume_network_free_request(self, network_hash: str) -> None:
+        """Списать один бесплатный запрос по сетевому ключу."""
+        now = utc_now_iso()
+        with self._lock:
+            used = self.network_free_requests_used(network_hash) + 1
+            self._execute(
+                "INSERT INTO network_quota (network_hash, free_requests_used, updated_at) "
+                "VALUES (?, ?, ?) ON CONFLICT (network_hash) DO UPDATE SET "
+                "free_requests_used = ?, updated_at = ?",
+                (network_hash, used, now, used, now),
+            )
 
     def register_request(self, session_hash: str, was_free: bool) -> None:
         """Увеличить счётчик обращений сессии."""

@@ -1,0 +1,172 @@
+/* Стили отдельных юридических страниц (privacy.html, consent.html,
+   terms.html, legal.html). Переиспользуют токены из основного style.css
+   через :root переменные. Подключаются отдельным <link>, чтобы не
+   раздувать основной бандл для landing page. */
+
+.legal-page {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 40px 22px 80px;
+}
+
+.legal-page__nav {
+  margin-bottom: 32px;
+}
+
+.legal-page__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-soft);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: color .15s ease, transform .15s ease;
+}
+
+.legal-page__back:hover {
+  color: var(--accent-soft);
+  text-decoration: none;
+  transform: translateX(-2px);
+}
+
+.legal-page__back svg {
+  width: 16px;
+  height: 16px;
+}
+
+.legal-page__head {
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+.legal-page__title {
+  margin: 0 0 12px;
+  font-size: clamp(28px, 4vw, 38px);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  background: linear-gradient(115deg, #f2f9ff 30%, var(--accent-soft) 78%, var(--accent-strong) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.legal-page__subtitle {
+  margin: 0;
+  font-size: 15px;
+  color: var(--text-soft);
+}
+
+.legal-page__updated {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(var(--accent-rgb), 0.08);
+  border: 1px solid rgba(var(--accent-rgb), 0.22);
+  color: var(--accent-soft);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.legal-page__notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 0 0 32px;
+  padding: 16px 20px;
+  border-radius: 12px;
+  background: rgba(255, 200, 100, 0.08);
+  border: 1px solid rgba(255, 200, 100, 0.30);
+  color: #fbbf24;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.legal-page__notice strong { color: #f59e0b; }
+
+.legal-page__notice svg { flex-shrink: 0; width: 22px; height: 22px; margin-top: 1px; }
+
+.legal-page__content {
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--text-soft);
+}
+
+.legal-page__content > h2 {
+  margin: 36px 0 14px;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.005em;
+}
+
+.legal-page__content > h2:first-child { margin-top: 0; }
+
+.legal-page__content > h3 {
+  margin: 24px 0 10px;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.legal-page__content > p {
+  margin: 0 0 14px;
+}
+
+.legal-page__content > ul,
+.legal-page__content > ol {
+  margin: 0 0 18px;
+  padding-left: 22px;
+}
+
+.legal-page__content > ul li,
+.legal-page__content > ol li {
+  margin-bottom: 8px;
+  line-height: 1.6;
+}
+
+.legal-page__content strong { color: var(--text); font-weight: 600; }
+
+.legal-page__content a {
+  color: var(--accent-soft);
+  text-decoration: underline;
+  text-decoration-color: rgba(var(--accent-rgb), 0.4);
+  text-underline-offset: 3px;
+}
+
+.legal-page__content a:hover {
+  color: var(--text);
+  text-decoration-color: var(--accent);
+}
+
+.legal-page__content blockquote {
+  margin: 20px 0;
+  padding: 16px 20px;
+  border-left: 3px solid rgba(var(--accent-rgb), 0.55);
+  background: rgba(var(--accent-rgb), 0.05);
+  border-radius: 0 8px 8px 0;
+  color: var(--text);
+  font-style: italic;
+}
+
+.legal-page__content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 14px;
+}
+
+.legal-page__content th,
+.legal-page__content td {
+  padding: 10px 14px;
+  text-align: left;
+  border: 1px solid var(--line);
+}
+
+.legal-page__content th {
+  background: rgba(var(--accent-rgb), 0.10);
+  color: var(--text);
+  font-weight: 600;
+}

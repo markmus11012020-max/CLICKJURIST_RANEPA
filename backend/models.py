@@ -149,10 +149,13 @@ class AsyncTaskStatusResponse(BaseModel):
 
 
 class PackageRequest(BaseModel):
-    """Запрос на пакетный тариф «Решение проблемы под ключ» (раздел 6 ТЗ)."""
+    """Запрос на пакетный тариф «Решение проблемы под ключ» (раздел 6 ТЗ).
+
+    Тариф единственный (``package_basic``, 195 ₽), поэтому параметра выбора
+    уровня нет: сервер всегда считает ``amount`` по базовому пакету.
+    """
 
     query: str = Field(..., min_length=3)
-    tier: Literal["basic", "premium"] = "basic"
 
 
 class PackageResponse(BaseModel):

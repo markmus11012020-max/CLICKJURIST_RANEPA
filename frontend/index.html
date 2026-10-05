@@ -3,13 +3,131 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="ClickJurist — юридический ИИ-сервис: двухэтапный мегапайплайн, маскировка ПДн в контуре РФ, веб-фактчекинг и оплата через Робокассу." />
-  <title>КликЮрист — юридический ИИ-сервис</title>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta http-equiv="Content-Language" content="ru" />
+
+  <!-- ===== Базовая SEO-мета ================================================= -->
+  <title>КликЮрист — юридическая консультация за один запрос · от 49 ₽</title>
+  <meta name="description" content="Юридический ИИ-сервис: консультация, чек-лист действий и шаблон официального документа за один запрос. Маскировка ПДн по 152-ФЗ, проверка по 2–3 источникам, оплата через Robokassa. Оплата до результата — от 49 ₽ за шаг." />
+  <meta name="keywords" content="юридическая консультация, ИИ-юрист, юридический сервис, правовая помощь, 152-ФЗ, защита персональных данных, онлайн-консультация юриста, чек-лист, шаблон документа, претензия, исковое заявление" />
+  <meta name="author" content="КликЮрист" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta name="theme-color" content="#0a819c" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="format-detection" content="telephone=no" />
+  <meta name="application-name" content="КликЮрист" />
+  <meta name="apple-mobile-web-app-title" content="КликЮрист" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <!-- ===== Open Graph (Facebook, WhatsApp) ================== -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="КликЮрист" />
+  <meta property="og:title" content="КликЮрист — юридическая консультация за один запрос" />
+  <meta property="og:description" content="Консультация, чек-лист и шаблон документа по вашей ситуации. Маскировка ПДн по 152-ФЗ. Проверка по 2–3 источникам. Оплата до результата — от 49 ₽ за шаг." />
+  <meta property="og:url" content="/" />
+  <meta property="og:image" content="/static/og.svg" />
+  <meta property="og:image:type" content="image/svg+xml" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="КликЮрист — юридическая ИИ-консультация за один запрос" />
+  <meta property="og:locale" content="ru_RU" />
+  <meta property="og:locale:alternate" content="en_US" />
+
+  <!-- ===== Twitter Card ===================================================== -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="КликЮрист — юридическая консультация за один запрос" />
+  <meta name="twitter:description" content="Консультация, чек-лист и шаблон документа по вашей ситуации. Оплата до результата — от 49 ₽ за шаг." />
+  <meta name="twitter:image" content="/static/og.svg" />
+  <meta name="twitter:image:alt" content="КликЮрист — юридический ИИ-сервис" />
+
+  <!-- ===== Canonical и пагинация =========================================== -->
+  <link rel="canonical" href="/" />
+
+  <!-- ===== Ассеты ========================================================== -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/style.css" />
-  <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' stop-color='%237fc4d2'/><stop offset='55%25' stop-color='%230a819c'/><stop offset='100%25' stop-color='%230a5f70'/></linearGradient></defs><path d='M32,3.5 L57,13.5 L57,32 C57,47.5 45,57.5 32,60.5 C19,57.5 7,47.5 7,32 L7,13.5 Z' fill='url(%23g)' stroke='%23ffffff' stroke-opacity='.4' stroke-width='1'/><g stroke='%23ffffff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' fill='none'><line x1='32' y1='18.5' x2='32' y2='43'/><line x1='25' y1='44' x2='39' y2='44'/><line x1='20' y1='21' x2='44' y2='21'/><path d='M32,18.5 L32,21'/><path d='M20,21 L16.5,30 A3.5,3.5 0 0,0 23.5,30 Z'/><path d='M44,21 L40.5,30 A3.5,3.5 0 0,0 47.5,30 Z'/></g><circle cx='32' cy='16.5' r='1.8' fill='%23ffffff'/></svg>" />
+  <link rel="stylesheet" href="/static/style.css?v=27" />
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/static/favicon.svg" />
+
+  <!-- ===== JSON-LD: Organization + SoftwareApplication ====================== -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "/#organization",
+        "name": "КликЮрист",
+        "alternateName": "ClickJurist",
+        "url": "/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "/static/favicon.svg",
+          "width": 64,
+          "height": 64
+        },
+        "founder": {
+          "@type": "Person",
+          "name": "Мусина Гульназ Мягазовна",
+          "email": "gmusina@list.ru",
+          "identifier": "631306493907"
+        },
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "ул. Мичурина, д. 152, кв. 8",
+          "addressLocality": "Самара",
+          "postalCode": "443086",
+          "addressCountry": "RU"
+        },
+        "contactPoint": [
+          {
+            "@type": "ContactPoint",
+            "email": "gmusina@list.ru",
+            "contactType": "customer support",
+            "availableLanguage": ["Russian"]
+          }
+        ],
+        "sameAs": []
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "/#app",
+        "name": "КликЮрист",
+        "applicationCategory": "BusinessApplication",
+        "applicationSubCategory": "Legal Service",
+        "operatingSystem": "Web",
+        "description": "Юридический ИИ-сервис: консультация, чек-лист действий и шаблон документа по вашей ситуации с проверкой по 2–3 независимым правовым источникам.",
+        "offers": {
+          "@type": "AggregateOffer",
+          "lowPrice": "0",
+          "highPrice": "195",
+          "priceCurrency": "RUB",
+          "offerCount": "3"
+        },
+        "featureList": [
+          "Юридическая консультация",
+          "Пошаговый чек-лист действий",
+          "Шаблон официального документа",
+          "Маскировка ПДн по 152-ФЗ",
+          "Проверка по 2–3 источникам"
+        ]
+      },
+      {
+        "@type": "WebSite",
+        "@id": "/#website",
+        "url": "/",
+        "name": "КликЮрист",
+        "inLanguage": "ru-RU",
+        "publisher": {"@id": "/#organization"}
+      }
+    ]
+  }
+  </script>
 </head>
 <body>
   <header class="topbar">
@@ -43,26 +161,224 @@
         <span class="brand-tagline">МГНОВЕННАЯ ЮРИДИЧЕСКАЯ ПОМОЩЬ</span>
       </span>
     </a>
-    <nav class="nav-links"><a href="#consult">Консультация</a><a href="#checklist">Чек-лист</a><a href="#document">Документ</a><a href="#legal">О сервисе</a></nav>
+    <nav class="nav-links" aria-label="Основная навигация"><a href="#consult">Консультация</a><a href="#checklist">Чек-лист</a><a href="#document">Документ</a><a href="#legal">О сервисе</a></nav>
     <div class="session-chip" id="sessionChip"><span class="dot"></span><span id="sessionLabel">Загрузка…</span></div>
+    <button class="nav-toggle" id="navToggle" type="button" aria-label="Открыть меню" aria-expanded="false" aria-controls="navDrawer">
+      <span class="nav-toggle__bar"></span>
+      <span class="nav-toggle__bar"></span>
+      <span class="nav-toggle__bar"></span>
+    </button>
   </header>
+  <div class="nav-drawer" id="navDrawer" hidden aria-label="Меню">
+    <nav class="nav-drawer__nav">
+      <a href="#consult" data-drawer-link>Консультация</a>
+      <a href="#checklist" data-drawer-link>Чек-лист</a>
+      <a href="#document" data-drawer-link>Документ</a>
+      <a href="#legal" data-drawer-link>О сервисе</a>
+    </nav>
+  </div>
   <main>
     <section class="hero">
-      <h1>Юридическая консультация<br />за один запрос</h1>
-      <p class="lead">Интеллектуальный сервис с гарантией анонимности данных (152-ФЗ), проверкой ответов по 2–3 независимым правовым источникам в Интернете и оплатой только за готовый результат.</p>
-      <div class="hero-cta">
-        <button class="btn primary" data-scroll="consult">Получить консультацию</button>
-        <button class="btn ghost" data-scroll="legal">Как это работает</button>
+      <div class="hero__inner">
+        <div class="hero__text">
+          <h1><span class="h1-line">Юридическая консультация</span><span class="h1-line">за один запрос</span></h1>
+          <p class="lead">Интеллектуальный сервис с гарантией анонимности данных (152-ФЗ), проверкой ответов по 2–3 независимым правовым источникам в Интернете и оплатой только за готовый результат.</p>
+          <div class="hero-cta">
+            <button class="btn primary hero-cta__primary" data-scroll="consult">
+              <span>Получить консультацию</span>
+              <svg class="hero-cta__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 5 7 7-7 7"/></svg>
+            </button>
+            <button class="btn btn-secondary hero-cta__secondary" data-scroll="legal">Как это работает</button>
+          </div>
+          <div class="hero-promo" id="heroPromo" aria-live="polite">
+            <svg class="hero-promo__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20 12V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-2"/>
+              <circle cx="17" cy="12" r="1.5" fill="currentColor"/>
+            </svg>
+            <span><strong>Оплата — до получения результата</strong> · от 49 ₽ за шаг</span>
+          </div>
+          <ul class="hero-tags">
+            <li>
+              <svg class="hero-tag__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 2 4 5v6c0 5 3.5 9.5 8 11 4.5-1.5 8-6 8-11V5l-8-3z"/>
+                <path d="m9 12 2 2 4-4"/>
+              </svg>
+              <span><strong>152-ФЗ</strong> · анонимность данных</span>
+            </li>
+            <li>
+              <svg class="hero-tag__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="7"/>
+                <path d="m21 21-4.3-4.3"/>
+                <path d="M11 8v3l2 2"/>
+              </svg>
+              <span><strong>Web-фактчекинг</strong> · 2–3 источника</span>
+            </li>
+            <li>
+              <svg class="hero-tag__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="2" y="5" width="20" height="14" rx="2"/>
+                <path d="M2 10h20"/>
+                <path d="m6 15 2 2 4-4"/>
+              </svg>
+              <span><strong>Robokassa</strong> · оплата по факту</span>
+            </li>
+          </ul>
+        </div>
+        <div class="hero__visual" aria-hidden="true">
+          <!-- Декоративная mock-карточка результата консультации.
+               Показывает формат продукта до покупки: «вы описываете ситуацию —
+               получаете квалификацию, нормы и пошаговый план». -->
+          <div class="consult-card">
+            <header class="consult-card__head">
+              <span class="consult-card__brand">
+                <span class="consult-card__shield" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2 4 5v6c0 5 3.5 9.5 8 11 4.5-1.5 8-6 8-11V5l-8-3z"/>
+                    <path d="m9 12 2 2 4-4"/>
+                  </svg>
+                </span>
+                <span class="consult-card__title">Юридическая консультация</span>
+              </span>
+              <span class="consult-card__status">
+                <span class="consult-card__status-dot"></span>
+                Ответ готов
+              </span>
+            </header>
+            <div class="consult-card__body">
+              <div class="consult-card__msg consult-card__msg--user">
+                <p>Соседи залили квартиру. Что делать?</p>
+              </div>
+              <div class="consult-card__msg consult-card__msg--bot">
+                <div class="consult-card__block">
+                  <span class="consult-card__block-label">Квалификация</span>
+                  <span class="consult-card__block-value">Возмещение ущерба от залива</span>
+                </div>
+                <div class="consult-card__block">
+                  <span class="consult-card__block-label">Применимые нормы</span>
+                  <span class="consult-card__chips">
+                    <span class="consult-card__chip">ст. 15 ГК РФ</span>
+                    <span class="consult-card__chip">ст. 1064 ГК РФ</span>
+                    <span class="consult-card__chip">Пленум ВС № 7</span>
+                  </span>
+                </div>
+                <div class="consult-card__block">
+                  <span class="consult-card__block-label">Ключевые сроки</span>
+                  <ul class="consult-card__deadlines">
+                    <li>
+                      <span class="consult-card__deadline-dot consult-card__deadline-dot--green" aria-hidden="true"></span>
+                      <span><strong>10 дней</strong> — ответ на претензию</span>
+                    </li>
+                    <li>
+                      <span class="consult-card__deadline-dot consult-card__deadline-dot--yellow" aria-hidden="true"></span>
+                      <span><strong>3 года</strong> — иск в суд</span>
+                    </li>
+                  </ul>
+                </div>
+                <div class="consult-card__block">
+                  <span class="consult-card__block-label">Прогноз</span>
+                  <div class="consult-card__probability">
+                    <div class="consult-card__bar" aria-hidden="true">
+                      <span class="consult-card__bar-fill consult-card__bar-fill--green" style="width: 70%"></span>
+                    </div>
+                    <span class="consult-card__probability-value">70% — высокие шансы</span>
+                  </div>
+                </div>
+                <div class="consult-card__plan">
+                  <span class="consult-card__plan-title">План действий</span>
+                  <ol class="consult-card__plan-list">
+                    <li><span class="consult-card__plan-num">1</span>Собрать документы по факту залива</li>
+                    <li><span class="consult-card__plan-num">2</span>Составить и подать письменную претензию</li>
+                    <li><span class="consult-card__plan-num">3</span>При отсутствии ответа — иск в суд</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+            <footer class="consult-card__foot">
+              <span class="consult-card__verify">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12 2 4 5v6c0 5 3.5 9.5 8 11 4.5-1.5 8-6 8-11V5l-8-3z"/>
+                  <path d="m9 12 2 2 4-4"/>
+                </svg>
+                Проверено по 2 источникам
+              </span>
+              <span class="consult-card__time">≈ 42 сек</span>
+            </footer>
+          </div>
+          <div class="hero__visual-glow" aria-hidden="true"></div>
+        </div>
       </div>
-      <ul class="hero-tags">
-        <li>152-ФЗ · анонимность данных</li>
-        <li>Web-фактчекинг</li>
-        <li>Robokassa · оплата по факту</li>
+    </section>
+    <section class="trust" aria-label="Почему нам доверяют">
+      <h2 class="trust__title">Почему нам доверяют</h2>
+      <ul class="trust__grid">
+        <li class="trust__card">
+          <span class="trust__num">2–3</span>
+          <span class="trust__caption">источника проверяют каждый ответ</span>
+        </li>
+        <li class="trust__card">
+          <span class="trust__num">&lt; 60&nbsp;сек</span>
+          <span class="trust__caption">среднее время первого ответа</span>
+        </li>
+        <li class="trust__card">
+          <span class="trust__num">152-ФЗ</span>
+          <span class="trust__caption">маскировка ПДн в контуре РФ</span>
+        </li>
+        <li class="trust__card">
+          <span class="trust__num">195&nbsp;₽</span>
+          <span class="trust__caption">пакет «Решение под ключ»</span>
+        </li>
       </ul>
     </section>
-    <section id="consult" class="card">
-      <header class="card-head"><h2>Шаг 1. Юридическая консультация</h2><span class="badge" id="priceConsult">— ₽</span></header>
+    <ol class="stepper" aria-label="Этапы работы">
+      <li class="stepper__item is-current" data-scroll="consult" data-step="1">
+        <span class="stepper__num">1</span>
+        <span class="stepper__label">Консультация</span>
+        <span class="stepper__price" data-step-price="consult">— ₽</span>
+      </li>
+      <li class="stepper__sep" aria-hidden="true"></li>
+      <li class="stepper__item" data-scroll="checklist" data-step="2">
+        <span class="stepper__num">2</span>
+        <span class="stepper__label">Чек-лист</span>
+        <span class="stepper__price" data-step-price="checklist">— ₽</span>
+      </li>
+      <li class="stepper__sep" aria-hidden="true"></li>
+      <li class="stepper__item" data-scroll="document" data-step="3">
+        <span class="stepper__num">3</span>
+        <span class="stepper__label">Документ</span>
+        <span class="stepper__price" data-step-price="document">— ₽</span>
+      </li>
+    </ol>
+    <div class="steps-grid">
+      <section id="consult" class="card step-card">
+      <header class="card-head"><h2>Шаг 1. Юридическая консультация</h2><div class="card-head__actions"><button type="button" class="step-expand" id="stepExpandBtn" aria-pressed="false" aria-label="Развернуть на весь экран" title="Развернуть на весь экран — удобнее вводить длинный текст"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8V5a2 2 0 0 1 2-2h3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M21 16v3a2 2 0 0 1-2 2h-3"/></svg><span>Развернуть</span></button><span class="badge" id="priceConsult">— ₽</span></div></header>
       <p class="card-sub">Опишите ситуацию простыми словами. ИИ проведёт правовой анализ и проверит актуальные нормы.</p>
+      <div class="step-preview" aria-label="Пример результата">
+        <div class="step-preview-row">
+          <span class="step-preview-label">Квалификация</span>
+          <span class="step-preview-value">Взыскание долга по расписке</span>
+        </div>
+        <div class="step-preview-row">
+          <span class="step-preview-label">Применимые нормы</span>
+          <span class="step-preview-chips">
+            <span class="step-preview-chip">ст. 808 ГК РФ</span>
+            <span class="step-preview-chip">ст. 309 ГК РФ</span>
+            <span class="step-preview-chip">ст. 196 ГК РФ</span>
+          </span>
+        </div>
+        <div class="step-preview-row">
+          <span class="step-preview-label">Ключевые сроки</span>
+          <span class="step-preview-deadline">
+            <span class="step-preview-deadline-dot step-preview-deadline-dot--yellow" aria-hidden="true"></span>
+            <strong>3 года</strong> — исковая давность
+          </span>
+        </div>
+        <div class="step-preview-row">
+          <span class="step-preview-label">Прогноз</span>
+          <span class="step-preview-probability">
+            <span class="step-preview-bar" aria-hidden="true"><span style="width: 78%"></span></span>
+            <span class="step-preview-probability-text">78% — высокие (при наличии расписки)</span>
+          </span>
+        </div>
+      </div>
       <label class="field"><span>Ваша ситуация</span><textarea id="queryInput" rows="6" placeholder="Например: соседи залили квартиру, управляющая компания отказывается возмещать ущерб."></textarea></label>
       <div class="quick-tags" id="quickTags" aria-label="Быстрые пресеты">
         <button type="button" class="quick-tag" data-tag="refund_goods">Возврат товара и денег</button>
@@ -70,7 +386,7 @@
         <button type="button" class="quick-tag" data-tag="gibdd_fine">Оспаривание штрафа ГИБДД</button>
         <button type="button" class="quick-tag" data-tag="debt_recovery">Взыскание дебиторской задолженности</button>
         <button type="button" class="quick-tag" data-tag="ooo_meeting">Оспаривание решения общего собрания участников ООО</button>
-        <button type="button" class="quick-tag" data-tag="b2b_audit">Экспертный аудит B2B-контракта</button>
+        <button type="button" class="quick-tag" data-tag="b2b_audit">Экспертный аудит договора</button>
       </div>
       <div class="actions"><button class="btn primary" id="runQueryBtn">Получить консультацию</button><button id="resetAppBtn" class="btn btn-secondary">Начать новую консультацию</button><span class="status" id="queryStatus"></span></div>
       <div class="package-cta" id="packageCta">
@@ -91,14 +407,54 @@
           <div class="skeleton-line"></div>
           <div class="skeleton-line short"></div>
         </div>
+        <div class="result-summary" id="querySummary" hidden aria-label="Краткая сводка по ситуации">
+          <div class="summary-item">
+            <span class="summary-label">Тип спора</span>
+            <span class="summary-value" data-summary="category">—</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Применимые нормы</span>
+            <span class="summary-value" data-summary="norms">—</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Ключевой срок</span>
+            <span class="summary-value" data-summary="deadline">—</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Уровень риска</span>
+            <span class="summary-value" data-summary="risk">—</span>
+          </div>
+        </div>
         <div class="result-body" id="queryResultBody"></div>
         <details class="sources" id="querySources" hidden><summary>Источники и ссылки</summary><ul id="querySourcesList"></ul></details>
         <div class="result-actions"><button class="btn secondary" id="toChecklistBtn">Составить чек-лист действий →</button></div>
       </article>
     </section>
-    <section id="checklist" class="card" data-step="2">
+    <section id="checklist" class="card step-card" data-step="2">
       <header class="card-head"><h2>Шаг 2. Чек-лист действий</h2><span class="badge" id="priceChecklist">— ₽</span></header>
       <p class="card-sub">На основе консультации — пошаговый план: что, куда и в какие сроки.</p>
+      <div class="step-preview step-preview--list" aria-label="Пример результата">
+        <div class="step-preview-item">
+          <span class="step-preview-check" aria-hidden="true"></span>
+          <span>Собрать документы по спору</span>
+        </div>
+        <div class="step-preview-item">
+          <span class="step-preview-check" aria-hidden="true"></span>
+          <span>Составить и подать претензию</span>
+        </div>
+        <div class="step-preview-item">
+          <span class="step-preview-check" aria-hidden="true"></span>
+          <span>Дождаться ответа (10 дней)</span>
+        </div>
+        <div class="step-preview-item">
+          <span class="step-preview-check" aria-hidden="true"></span>
+          <span>При отсутствии ответа — подать иск</span>
+        </div>
+        <div class="step-preview-item step-preview-item--muted">
+          <span class="step-preview-check" aria-hidden="true"></span>
+          <span>…и ещё 3–7 пунктов по вашей ситуации</span>
+        </div>
+      </div>
       <div class="actions"><button class="btn primary" id="runChecklistBtn">Составить чек-лист</button><span class="status" id="checklistStatus"></span></div>
       <article class="result" id="checklistResult" hidden>
         <h3>Чек-лист</h3>
@@ -114,9 +470,18 @@
         <div class="result-body" id="checklistResultBody"></div>
       </article>
     </section>
-    <section id="document" class="card" data-step="3">
+    <section id="document" class="card step-card" data-step="3">
       <header class="card-head"><h2>Шаг 3. Шаблон документа</h2><span class="badge" id="priceDocument">— ₽</span></header>
       <p class="card-sub">Выберите тип документа: жалоба, досудебная претензия, исковое заявление или возражение для отмены судебного приказа.</p>
+      <details class="step-preview step-preview--doc" aria-label="Пример результата">
+        <summary>Показать пример документа</summary>
+        <div class="step-preview-doc-body">
+          <p class="step-preview-doc-title">Претензия о возврате денежных средств</p>
+          <p>Кому: ООО «Управляющая компания»<br />От кого: Иванов И.И.<br />Дата: 03.10.2026</p>
+          <p>Я, Иванов Иван Иванович, 12.08.2026 обратился в вашу организацию с заявлением о возмещении ущерба, причинённого заливом квартиры …</p>
+          <p class="step-preview-doc-mute">…и далее 8–12 разделов с правовым обоснованием, ссылками на ст. 15, 1064 ГК РФ и приложениями.</p>
+        </div>
+      </details>
       <div class="field"><span>Тип документа</span>
         <div class="doc-type-row" id="docTypeRow">
           <button type="button" class="btn ghost doc-type-btn" data-doc-type="complaint" aria-pressed="false">Жалоба</button>
@@ -142,14 +507,86 @@
       </article>
       <p class="step-disclaimer">Внимание: документ формируется автоматизированной ИИ-системой. Перед подачей в государственные органы и суды рекомендуется финальная проверка практикующим специалистом.</p>
     </section>
-    <section id="legal" class="card">
-      <h2>О сервисе</h2>
-      <p id="legalPrivacy"></p>
-      <details class="legal-accordion">
-        <summary>Юридический дисклеймер</summary>
-        <p class="disclaimer" id="legalDisclaimer"></p>
-      </details>
+    </div>
+    <section class="faq" aria-label="Частые вопросы">
+      <h2 class="faq__title">Частые вопросы</h2>
+      <div class="faq__list">
+        <details class="faq__item" open>
+          <summary>Это законно?</summary>
+          <p>Да. Сервис работает как информационно-аналитическая платформа: вы получаете юридический анализ ситуации со ссылками на действующие нормы (ГК, ГПК, АПК, КоАП, ФЗ-152, ФЗ-149). Итоговые документы перед подачей рекомендуется проверить практикующему юристу — мы явно пишем об этом в каждом документе.</p>
+        </details>
+        <details class="faq__item">
+          <summary>Кто отвечает за качество ответа?</summary>
+          <p>Каждый ответ ИИ собирается по 2–3 независимым правовым источникам (закон, судебная практика, Пленум ВС РФ). Ответственность за финальное решение остаётся за вами — мы помогаем разобраться в нормах и рисках.</p>
+        </details>
+        <details class="faq__item">
+          <summary>Что с моими персональными данными?</summary>
+          <p>Текст запроса проходит через контур маскировки ПДн в РФ (152-ФЗ): имена, адреса и телефоны заменяются на плейсхолдеры до отправки в ИИ. Сессия привязана к анонимному идентификатору, без привязки к email или аккаунту.</p>
+        </details>
+        <details class="faq__item">
+          <summary>Чем это отличается от обычного юриста?</summary>
+          <p>Скорость (минуты вместо дней) и цена (от 49 ₽ за один шаг вместо 3 000–15 000 ₽ за консультацию). Для типовых бытовых и потребительских споров этого достаточно; для сложных арбитражных кейсов рекомендуем как минимум дополнительно проконсультироваться с практикующим специалистом.</p>
+        </details>
+        <details class="faq__item">
+          <summary>Что если ответ окажется неверным?</summary>
+          <p>Мы пересчитываем пайплайн по двум независимым источникам перед выдачей. Если нашли ошибку в нашем ответе — напишите нам через чат-бот справа внизу, проверим и компенсируем по тарифу.</p>
+        </details>
+        <details class="faq__item">
+          <summary>Как оплатить?</summary>
+          <p>Через Robokassa: банковская карта, СБП, Я.Пэй. Оплата — <strong>до получения результата</strong>: после оплаты шага сервис сразу генерирует ответ. Доступ открывается на 30 дней — за это время можно получить любое число ответов по выбранному шагу. Если ответ не помог — возврат в течение 14 дней.</p>
+        </details>
+      </div>
     </section>
+    <section id="legal" class="card legal-section">
+      <h2>О сервисе</h2>
+
+      <div class="legal-block legal-intro">
+        <h3>О платформе</h3>
+        <p>КликЮрист — это интеллектуальная автоматизированная платформа для мгновенного решения правовых задач любого уровня сложности: от бытовых споров до арбитражных коммерческих кейсов. Сервис осуществляет глубокий юридический анализ ситуации, составляет пошаговые карты действий и генерирует официальные процессуальные документы, полностью готовые к подаче в суды или госорганы.</p>
+      </div>
+
+      <div class="legal-block legal-operator">
+        <div id="legalOperator"></div>
+      </div>
+
+      <div class="legal-block legal-pricing">
+        <h3>Гибкие условия и тарифы</h3>
+        <p>Вы можете использовать сервис так, как удобно вам:</p>
+        <ul>
+          <li><strong>Пошаговое решение:</strong> оплачивайте только те этапы, которые необходимы прямо сейчас (первичная консультация — 49 ₽, интерактивный чек-лист — 50 ₽, подготовка официального бланка — 150 ₽).</li>
+          <li><strong>Комплексный пакет «Решение под ключ»:</strong> получите полный цикл обслуживания (автоматическая последовательная генерация консультации, чек-листа и готового документа) всего за 195 ₽ в один клик.</li>
+        </ul>
+      </div>
+
+      <div class="legal-block legal-privacy">
+        <div id="legalPrivacy"></div>
+      </div>
+
+      <div class="legal-block legal-disclaimer">
+        <h3>Юридическое уведомление</h3>
+        <p class="disclaimer" id="legalDisclaimer"></p>
+      </div>
+    </section>
+
+    <!-- Локальный архив консультаций: живёт ТОЛЬКО в браузере (152-ФЗ,
+         Zero-Storage). Каждая запись хранит обезличенный вопрос + ответ +
+         ссылки на НПА; кнопка «Открыть» восстанавливает результат в Шаге 1,
+         «★» — избранное (не удаляется при FIFO-чистке), «×» — удалить одну
+         запись, «Очистить архив» — сбросить всё (с подтверждением). -->
+    <section id="archive" class="archive" aria-label="Архив консультаций">
+      <div class="archive__head">
+        <h2 class="archive__title">Мои консультации</h2>
+        <span class="archive__counter" aria-label="Количество записей"><span id="archiveCount">0</span> шт.</span>
+      </div>
+      <p class="archive__notice">
+        Записи хранятся только в вашем браузере (localStorage). Сервер их не получает и не сохраняет — это часть политики Zero-Storage по 152-ФЗ. Очистка кэша браузера удалит архив безвозвратно.
+      </p>
+      <div class="archive__list" id="archiveList" aria-live="polite"></div>
+      <div class="archive__footer">
+        <button type="button" class="btn ghost archive__clear" id="archiveClearBtn">Очистить архив</button>
+      </div>
+    </section>
+
     <aside class="paywall" id="paywall" hidden>
       <div class="paywall-card">
         <h3>Чтобы продолжить, оплатите услугу</h3>
@@ -161,7 +598,73 @@
     </aside>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
   </main>
-  <footer><span>КликЮрист · 152-ФЗ · анонимность данных · 2026</span></footer>
-  <script src="/static/script.js" defer></script>
+  <footer class="site-footer" aria-label="Подвал сайта">
+    <div class="site-footer__inner">
+      <div class="site-footer__col site-footer__col--brand">
+        <a class="site-footer__brand" href="#top" aria-label="КликЮрист — главная">
+          <span class="site-footer__shield" aria-hidden="true">
+            <svg viewBox="0 0 64 64" width="32" height="32" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="cjFootShield" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#7fc4d2"/>
+                  <stop offset="55%" stop-color="#0a819c"/>
+                  <stop offset="100%" stop-color="#0a5f70"/>
+                </linearGradient>
+              </defs>
+              <path d="M32,4 L56,13 L56,32 C56,46.5 45,56.5 32,59.5 C19,56.5 8,46.5 8,32 L8,13 Z"
+                    fill="none" stroke="url(#cjFootShield)" stroke-width="2" stroke-linejoin="round"/>
+              <path d="M23,32.5 L29,38.5 L41,26" fill="none" stroke="url(#cjFootShield)"
+                    stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <span class="site-footer__brand-text">
+            <strong>КликЮрист</strong>
+            <span>Мгновенная юридическая помощь</span>
+          </span>
+        </a>
+        <p class="site-footer__desc">Юридический ИИ-сервис с гарантией анонимности данных по 152-ФЗ. Консультация, чек-лист действий и шаблон документа по вашей ситуации — за один запрос.</p>
+      </div>
+      <nav class="site-footer__col" aria-label="Сервис">
+        <h4 class="site-footer__title">Сервис</h4>
+        <ul class="site-footer__links">
+          <li><a href="#consult">Консультация</a></li>
+          <li><a href="#checklist">Чек-лист</a></li>
+          <li><a href="#document">Документ</a></li>
+          <li><a href="#legal">О сервисе</a></li>
+          <li><a href="#legal">Как это работает</a></li>
+        </ul>
+      </nav>
+      <nav class="site-footer__col" aria-label="Правовая информация">
+        <h4 class="site-footer__title">Правовая информация</h4>
+        <ul class="site-footer__links">
+          <li><a href="/consent.html">Согласие на обработку ПДн</a></li>
+          <li><a href="/privacy.html">Политика конфиденциальности</a></li>
+          <li><a href="/terms.html">Пользовательское соглашение</a></li>
+          <li><a href="/legal.html">Юридическое уведомление</a></li>
+        </ul>
+      </nav>
+      <div class="site-footer__col site-footer__col--pay">
+        <h4 class="site-footer__title">Оплата и поддержка</h4>
+        <ul class="site-footer__links">
+          <li>Платежи: <strong>Robokassa</strong></li>
+          <li>Карты · СБП · Я.Пэй</li>
+          <li>Оплата до результата · от <strong>49 ₽</strong></li>
+        </ul>
+        <div class="site-footer__badges" aria-label="Лицензии и стандарты">
+          <span class="site-footer__badge" title="Защита персональных данных">152-ФЗ</span>
+          <span class="site-footer__badge" title="Российская юрисдикция">RU</span>
+          <span class="site-footer__badge" title="Сертификат безопасности">SSL</span>
+        </div>
+      </div>
+    </div>
+    <div class="site-footer__legal">
+      <span class="site-footer__copy">© 2026 Мусина Г. М. · сервис «КликЮрист». Все права защищены.</span>
+      <span class="site-footer__meta">ИНН 631306493907 · Самозанятый (НПД, ФЗ-422) · Сделано в РФ</span>
+    </div>
+  </footer>
+  <!-- Логика сайта разнесена по ES-модулям в /static/js/ (модульный скрипт) -->
+  <script type="module" src="/static/script.js?v=20"></script>
+  <!-- Всплывающий чат-бот: модуль в папке chatbot/, API — /api/chatbot -->
+  <script type="module" src="/chatbot/static/js/chatbot.js?v=10"></script>
 </body>
 </html>
