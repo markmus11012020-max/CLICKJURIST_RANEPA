@@ -10,14 +10,9 @@
 """
 from __future__ import annotations
 
-import pytest
-
 from backend.config import settings
-from backend.services.llm_chain import stage2_fallback_chain, fallback_chain
+from backend.services.llm_chain import stage2_fallback_chain
 from backend.services.providers import (
-    AITunnelProvider,
-    LLMError,
-    YandexGPTProvider,
     _ascii_safe,
     _sanitize_headers,
     get_provider,
@@ -101,24 +96,16 @@ def test_stage2_chain_deduped():
 
 def test_stage2_chain_works_when_primary_is_yandex():
     """Даже при PRIMARY_PROVIDER=yandex aitunnel в конце цепочки."""
-    original = settings.PRIMARY_PROVIDER
-    try:
-        # Имитируем yandex как primary (без изменения settings, проверяем логику)
-        from backend.services.llm_chain import fallback_chain as fc
-
-        # Проверяем: если primary=yandex, chain = [yandex, aitunnel]
-        chain = stage2_fallback_chain()
-        # aitunnel всегда последний, независимо от primary
-        assert chain[-1] == "aitunnel"
-        assert chain[0] != "aitunnel"  # аitunnel НЕ должен быть первым
-    finally:
-        pass  # settings не изменялся
+    # Имитируем yandex как primary (без изменения settings, проверяем логику)
+    chain = stage2_fallback_chain()
+    # aitunnel всегда последний, независимо от primary
+    assert chain[-1] == "aitunnel"
+    assert chain[0] != "aitunnel"  # aitunnel НЕ должен быть первым
 
 
 # --- AITunnelProvider model fallback ------------------------------------------
 def test_aitunnel_falls_back_to_default_model():
     """AITunnelProvider должен использовать ROUTER_DEFAULT_MODEL при model=None."""
-    provider = AITunnelProvider()
     # Проверяем, что модель по умолчанию определена в настройках
     assert settings.ROUTER_DEFAULT_MODEL
     assert isinstance(settings.ROUTER_DEFAULT_MODEL, str)

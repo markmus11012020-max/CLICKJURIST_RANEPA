@@ -11,7 +11,6 @@
 """
 from __future__ import annotations
 
-import re
 from typing import Literal
 
 LegalCategory = Literal["b2b", "b2c"]

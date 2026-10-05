@@ -11,7 +11,8 @@
 * :mod:`backend.api.deps` — платёжный барьер и общие зависимости;
 * :mod:`backend.api.router_query` — консультация и фоновые задачи;
 * :mod:`backend.api.router_docs` — чек-лист, документ, PDF, пакетный тариф;
-* :mod:`backend.api.router_payment` — оплата Robokassa;
+* :mod:`backend.api.router_payment` — оплата Robokassa (общий путь);
+* :mod:`backend.api.router_payments` — webhook Робокассы для Wizard (STAGE_3);
 * :mod:`backend.api.router_auth` — JWT-сессия;
 * :mod:`backend.api.router_meta` — сессия, тарифы, здоровье, статика.
 """

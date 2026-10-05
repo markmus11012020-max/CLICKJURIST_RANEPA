@@ -6,12 +6,12 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from chatbot.app import register
-from chatbot.container import ChatbotContainer
 from chatbot.config import ChatbotSettings
+from chatbot.container import ChatbotContainer
+from chatbot.knowledge.base import StaticKnowledgeBase
 from chatbot.llm.gateway import NullLLMGateway
 from chatbot.repositories.in_memory import InMemoryConversationRepository
 from chatbot.services.orchestrator import ChatOrchestrator
-from chatbot.knowledge.base import StaticKnowledgeBase
 
 SESSION = "test-session-0001"
 

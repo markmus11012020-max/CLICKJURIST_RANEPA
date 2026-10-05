@@ -13,10 +13,11 @@ from __future__ import annotations
 
 import sqlite3
 import threading
+from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 from backend.config import settings
 
@@ -77,12 +78,12 @@ _SCHEMA_REQUEST_LOG_POSTGRES = _SCHEMA_REQUEST_LOG_SQLITE.replace(
 
 def utc_now_iso() -> str:
     """Текущее время в ISO-8601 (UTC) — единый формат для обоих диалектов."""
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S")
 
 
 def iso_in_days(days: int) -> str:
     """Метка времени в будущем (используется для ``paid_until``)."""
-    moment = datetime.now(timezone.utc) + timedelta(days=days)
+    moment = datetime.now(UTC) + timedelta(days=days)
     return moment.strftime("%Y-%m-%dT%H:%M:%S")
 
 
@@ -147,7 +148,7 @@ class RequestStore:
             rows: list[dict[str, Any]] = []
             if cursor.description:
                 columns = [col[0] for col in cursor.description]
-                rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
+                rows = [dict(zip(columns, row, strict=True)) for row in cursor.fetchall()]
             cursor.close()
             return rows
 

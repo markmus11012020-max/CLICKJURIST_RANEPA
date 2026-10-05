@@ -26,8 +26,8 @@ from chatbot.domain.interfaces import (
     LLMGateway,
 )
 from chatbot.exceptions import EmptyMessageError, MessageTooLongError
-from chatbot.llm.streaming import StreamEvent, StreamEventType
 from chatbot.knowledge import catalog
+from chatbot.llm.streaming import StreamEvent, StreamEventType
 from chatbot.services.greeting import Greeting, GreetingService
 from chatbot.services.intent_resolver import IntentResolver
 from chatbot.services.response_sanitizer import ResponseSanitizer

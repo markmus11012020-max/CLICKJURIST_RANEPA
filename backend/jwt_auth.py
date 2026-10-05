@@ -19,7 +19,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import jwt
@@ -32,7 +32,7 @@ logger = logging.getLogger("clickjurist.jwt_auth")
 
 def _now() -> datetime:
     """Текущее время в UTC (timezone-aware)."""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def fingerprint_hash(fingerprint: str) -> str:
@@ -45,7 +45,7 @@ def fingerprint_hash(fingerprint: str) -> str:
     if not fingerprint:
         return ""
     return hashlib.sha256(
-        f"{fingerprint}|{settings.SESSION_HASH_SALT}".encode("utf-8")
+        f"{fingerprint}|{settings.SESSION_HASH_SALT}".encode()
     ).hexdigest()[:32]
 
 

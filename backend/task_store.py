@@ -23,10 +23,11 @@ import queue
 import threading
 import time
 import uuid
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Callable, Iterator
+from typing import Any
 
 from backend.config import settings
 
@@ -61,7 +62,7 @@ class TaskRecord:
 
     def push_event(self, event: dict[str, Any]) -> None:
         """Добавить событие в ленту и разослать подписчикам (SSE)."""
-        stamped = {**event, "ts": datetime.now(timezone.utc).isoformat()}
+        stamped = {**event, "ts": datetime.now(UTC).isoformat()}
         self.events.append(stamped)
         if len(self.events) > 200:
             self.events = self.events[-200:]
@@ -99,7 +100,7 @@ class TaskRecord:
 
 def _utc_now_iso() -> str:
     """Текущее время в ISO-8601 (UTC)."""
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S")
 
 
 class MemoryTaskStore:

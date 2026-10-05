@@ -71,7 +71,16 @@ export class Composer {
     // (`isTyping`). Раньше `_syncDisabled` сбрасывал только `send.disabled`,
     // из-за чего `input.disabled` оставался `true` после первого ответа и
     // поле выглядело «неактивным» (плейсхолдер виден, но ввод не работает).
-    state.subscribe(() => this._syncDisabled());
+    // Оформлено как `(current) => { … }` — тело подписки читает
+    // `current.isLoading` и обязательно зовёт `_syncDisabled()`, чтобы при
+    // возврате `isLoading=false` (стриминг ответа завершён) поле ввода
+    // разблокировалось.
+    state.subscribe((current) => {
+      const isLoading = Boolean(current && current.isLoading);
+      if (!isLoading || this._input) {
+        this._syncDisabled();
+      }
+    });
   }
 
   /**

@@ -46,7 +46,7 @@ class StreamEvent:
 
     # -- Конструкторы --------------------------------------------------------
     @classmethod
-    def meta(cls, intent: str, source: str, streamed: bool) -> "StreamEvent":
+    def meta(cls, intent: str, source: str, streamed: bool) -> StreamEvent:
         """Начало генерации: что бот понял и откуда возьмёт ответ."""
         return cls(
             StreamEventType.META,
@@ -54,16 +54,16 @@ class StreamEvent:
         )
 
     @classmethod
-    def delta(cls, text: str) -> "StreamEvent":
+    def delta(cls, text: str) -> StreamEvent:
         """Фрагмент текста ответа."""
         return cls(StreamEventType.DELTA, {"text": text})
 
     @classmethod
-    def done(cls, reply) -> "StreamEvent":
+    def done(cls, reply) -> StreamEvent:
         """Финальный ответ: доменный объект :class:`BotReply`."""
         return cls(StreamEventType.DONE, {"reply": reply.to_dict()})
 
     @classmethod
-    def error(cls, message: str) -> "StreamEvent":
+    def error(cls, message: str) -> StreamEvent:
         """Ошибка генерации."""
         return cls(StreamEventType.ERROR, {"message": message})

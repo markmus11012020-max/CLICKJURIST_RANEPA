@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from chatbot.domain.enums import AnswerSource, MessageRole
@@ -14,7 +14,7 @@ def utc_now() -> datetime:
     Отдельная функция, чтобы домен не зависел от реализации ``Clock`` —
     так проще тестировать (подменяем её в тестах).
     """
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,7 +75,7 @@ class BotReply:
         intent: str = "fallback",
         quick_replies: tuple[QuickReply, ...] = (),
         actions: tuple[Action, ...] = (),
-    ) -> "BotReply":
+    ) -> BotReply:
         """Собрать ответ из сценария (без участия языковой модели)."""
         return cls(
             text=text,
@@ -112,7 +112,7 @@ class ChatMessage:
         }
 
     @classmethod
-    def from_dict(cls, raw: dict[str, Any]) -> "ChatMessage":
+    def from_dict(cls, raw: dict[str, Any]) -> ChatMessage:
         """Восстановить сообщение из сериализованного вида."""
         return cls(
             role=MessageRole(raw.get("role", MessageRole.USER.value)),

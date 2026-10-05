@@ -6,6 +6,7 @@
 * :mod:`backend.api.router_query` — консультация и фоновые задачи;
 * :mod:`backend.api.router_docs` — чек-лист, документ, PDF, пакет;
 * :mod:`backend.api.router_payment` — оплата Robokassa;
+* :mod:`backend.api.router_payments` — webhook Робокассы для Wizard (STAGE_3);
 * :mod:`backend.api.router_auth` — JWT-сессия;
 * :mod:`backend.api.router_meta` — сессия, тарифы, здоровье, SPA;
 * :mod:`backend.api.deps` — платёжный барьер.
@@ -29,18 +30,20 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+
 from backend.api import (
     router_auth,
     router_docs,
     router_meta,
     router_payment,
+    router_payments,
     router_query,
     router_wizard,
 )
 from backend.config import PROJECT_ROOT, settings
 from backend.logging_setup import setup_logging
-from backend.startup_checks import validate_startup
 from backend.services.rate_limit import init_limiters
+from backend.startup_checks import validate_startup
 from backend.static_files import NoCacheStaticFiles
 
 # --- Инициализация окружения --------------------------------------------------
@@ -137,6 +140,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 app.include_router(router_query.router)
 app.include_router(router_docs.router)
 app.include_router(router_payment.router)
+app.include_router(router_payments.router)
 app.include_router(router_auth.router)
 app.include_router(router_meta.router)
 app.include_router(router_wizard.router)
@@ -174,7 +178,7 @@ except Exception as _chatbot_exc:  # pragma: no cover — модуль не кр
 from backend.api.deps import payment_required as _payment_required  # noqa: E402
 from backend.api.deps import session_gate as _session_gate  # noqa: E402
 
-__all__ = ["app"]
+__all__ = ["app", "_session_gate", "_payment_required"]
 
 
 if __name__ == "__main__":  # pragma: no cover — точка входа для локального запуска

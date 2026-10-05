@@ -14,12 +14,11 @@ import threading
 
 from chatbot.config import ChatbotSettings, chatbot_settings
 from chatbot.domain.interfaces import KnowledgeBase
+from chatbot.knowledge.base import StaticKnowledgeBase
 from chatbot.llm.gateway import ChatLLMGateway, NullLLMGateway
 from chatbot.repositories.in_memory import InMemoryConversationRepository
 from chatbot.services.greeting import GreetingService
 from chatbot.services.orchestrator import ChatOrchestrator
-from chatbot.services.response_sanitizer import ResponseSanitizer
-from chatbot.knowledge.base import StaticKnowledgeBase
 
 logger = logging.getLogger(__name__)
 

@@ -5,10 +5,8 @@
 """
 from __future__ import annotations
 
-import logging
-
 from fastapi import Request
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse
 
 from backend.config import settings
 from backend.db import store

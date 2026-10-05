@@ -54,11 +54,18 @@ export class WizardState {
     this._listeners = new Set();
     /** Подтверждение, что DOM-секции уже отрендерены (для безопасного setStage). */
     this._mounted = false;
+    /** UUID Wizard-сессии (источник правды — ответ /api/wizard/state). */
+    this._sessionId = null;
   }
 
   // --- Getters --------------------------------------------------------------
   getStage() {
     return this._stage;
+  }
+
+  /** UUID Wizard-сессии (``session.session_id`` из /api/wizard/state). */
+  getSessionId() {
+    return this._sessionId;
   }
 
   /** Вернуть чек-лист плоским объектом (для POST на сервер). */
@@ -113,6 +120,30 @@ export class WizardState {
     this._stage = 'STAGE_1';
     this._checklist.clear();
     if (this._mounted) this._applyStageVisibility();
+    this._notify();
+  }
+
+  /**
+   * Зафиксировать UUID Wizard-сессии (после успешного /api/wizard/state).
+   * Нужен для формирования ``shp_session_id`` в POST /api/payment/create:
+   * Робокасса возвращает его транзитом, и webhook использует его, чтобы
+   * найти WizardSession и пометить ``is_paid=True``.
+   * @param {string|null} id
+   */
+  setSessionId(id) {
+    if (this._sessionId === id) return;
+    this._sessionId = id || null;
+    // Дополнительно дублируем UUID в data-атрибуте корневого элемента
+    // Wizard'а — на случай, если другие модули предпочтут читать
+    // напрямую из DOM (вместо импорта singleton'а).
+    const root = document.querySelector('[data-wizard-stepper]');
+    if (root) {
+      if (id) {
+        root.dataset.sessionId = id;
+      } else {
+        delete root.dataset.sessionId;
+      }
+    }
     this._notify();
   }
 
@@ -255,6 +286,12 @@ export function pollWizardUntilReady(opts = {}) {
           // сетевая ошибка / 5xx — пробуем ещё раз через intervalMs
           await sleep(intervalMs, controller.signal);
           continue;
+        }
+
+        // Сохраняем UUID Wizard-сессии для последующего создания счёта
+        // Робокассы с ``shp_session_id`` (см. backend.api.router_payments).
+        if (data.session && data.session.session_id) {
+          wizardState.setSessionId(data.session.session_id);
         }
 
         if (data.has_active_task) {

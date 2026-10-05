@@ -1,5 +1,7 @@
 """Локальный smoke-валидатор: проверяет синтаксис HTML/CSS и наличие JS-ID."""
-import pathlib, re, sys
+import pathlib
+import re
+import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 

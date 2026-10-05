@@ -11,14 +11,33 @@
  *
  *   2. STAGE_3: renderDocument({ markdown, isPaid })
  *      — markdown → HTML (через core/markdown.js — без внешних либ);
- *      — если !isPaid — наложить CSS-класс .is-blurred и показать paywall;
+ *      — если !isPaid — НЕ рендерить реальный текст документа: берём
+ *        только первые 30% (шапка + описание) и замещаем остальной объём
+ *        случайной декоративной «рыбой» (без юридического смысла).
+ *        CSS-блюр остаётся исключительно как декоративный задний план под
+ *        виджетом Робокассы — он НЕ защищает текст, поэтому подмена
+ *        содержимого в DOM обязательна;
  *      — если isPaid — снять блюр и показать кнопку скачивания.
+ *        Сервер при ``is_paid == True`` отдаёт уже размаскированный
+ *        Markdown (см. backend.api.router_wizard._build_paid_document),
+ *        фронтенд просто отрисовывает его как есть.
  *
  *   3. bindStage2Advance() — кнопка «Готово →» на STAGE_2: шлёт финальный
- *      sync-checklist с advance_stage=true → Wizard переходит на STAGE_3.
+ *      sync-checklist с advance_stage=true → Wizard переходит на STAGE_3,
+ *      затем опрашивает /api/wizard/state для рендера документа с paywall.
  *
  *   4. bindStage1Submit() — форма на STAGE_1: запускает пайплайн анализа,
  *      стартует polling и переходит на STAGE_1-loader.
+ *
+ *   5. refreshPaymentState() — после возврата с Робокассы опрашивает
+ *      /api/wizard/state; если is_paid == true — перерисовывает документ
+ *      (сервер к этому моменту уже подставил реальные ПДн через
+ *      deanonymize_document).
+ *
+ *   6. bindStage3Paywall() — кнопка «Разблокировать» на STAGE_3:
+ *      создаёт счёт в Робокассе через /api/payment/create, передавая
+ *      ``shp_session_id`` (UUID Wizard-сессии), чтобы webhook мог найти
+ *      нужный WizardSession и пометить ``is_paid=True``.
  *
  * Импортируется из script.js (entry-point) после загрузки DOM.
  */
@@ -173,11 +192,85 @@ async function _postChecklist(originCheckbox) {
 // ---------------------------------------------------------------------------
 
 /**
+ * Алфавит для генерации декоративной «рыбы» подписной части документа.
+ * Состоит из распространённых русских слогов — снаружи похоже на текст,
+ * но не несёт юридического смысла и безопасно для рендера.
+ */
+const _FISH_CHARS =
+  'абвгдеёжзийклмнопрстуфхцчшщъыьэюя' +
+  'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ' +
+  ' .,;:!?()';
+
+/**
+ * Сгенерировать декоративный «рыбный» текст заданной примерной длины.
+ * Возвращает строку, визуально похожую на связный русский текст, но без
+ * какого-либо отношения к реальному документу. Используется, чтобы
+ * подписная часть страницы выглядела заполненной, но не выдавала
+ * содержимое документа до подтверждения оплаты.
+ *
+ * @param {number} [minChars=800]
+ * @returns {string}
+ */
+function _generateFishText(minChars = 800) {
+  const out = [];
+  let total = 0;
+  // Чередуем «слова» разной длины и знаки препинания — так блок не выглядит
+  // как один поток символов и его сложнее отличить от настоящего текста при
+  // беглом просмотре, но скопировать из него всё равно нечего полезного.
+  while (total < minChars) {
+    const wordLen = 3 + Math.floor(Math.random() * 8);
+    let word = '';
+    for (let i = 0; i < wordLen; i++) {
+      const ch = _FISH_CHARS.charAt(Math.floor(Math.random() * 66));
+      word += i === 0 ? ch : ch.toLowerCase();
+    }
+    out.push(word);
+    total += wordLen + 1;
+    // Каждые 6–10 слов — точка с пробелом: визуально собираем в абзацы.
+    if (out.length % (6 + Math.floor(Math.random() * 5)) === 0) {
+      out.push('.');
+      total += 2;
+    } else {
+      out.push(' ');
+      total += 1;
+    }
+  }
+  return out.join('').trim() + '.';
+}
+
+/**
+ * Обрезать входящий Markdown до первых 30% — оставляем «Шапку» и
+ * «Описание», это безопасно показывать без оплаты (по ТЗ это публичные
+ * реквизиты документа, не ПДн). Реальная просительная часть и приложения
+ * скрываются за paywall и НИКОГДА не попадают в DOM до подтверждения оплаты.
+ *
+ * @param {string} md
+ * @returns {string}
+ */
+function _truncateToPreviewPart(md) {
+  if (!md) return '';
+  const cutoff = Math.max(1, Math.floor(md.length * 0.30));
+  let end = cutoff;
+  // Не разрываем посередине слова, если возможно.
+  while (end < md.length && /\S/.test(md[end])) end += 1;
+  return md.slice(0, end).trim();
+}
+
+/**
  * Отрисовать документ и (опционально) размыть его.
+ *
+ * БЕЗОПАСНОСТЬ PAYWALL (STAGE_3):
+ *   Если `isPaid === false`, настоящий текст документа в DOM НЕ рендерится.
+ *   Вместо этого берётся только публичная превью-часть (первые ~30% —
+ *   шапка и описание), а остальной объём замещается случайной «рыбой».
+ *   Эффект CSS-размытия (`.is-blurred` + `::after`) остаётся исключительно
+ *   как декоративный задний план под виджетом Робокассы — он НЕ является
+ *   механизмом защиты: без замены текста в DOM любой пользователь мог бы
+ *   прочитать документ через DevTools / выделение / accessibility tree.
+ *
  * @param {object} opts
  * @param {string} [opts.markdown] — текст документа
  * @param {boolean} opts.isPaid — флаг оплаты
- * @param {string} [opts.docType='complaint'] — тип документа (для заголовка)
  */
 export function renderDocument(opts = {}) {
   const doc = document.querySelector('[data-wizard-document]');
@@ -186,16 +279,30 @@ export function renderDocument(opts = {}) {
   if (!doc) return;
 
   const { markdown = '', isPaid = false } = opts;
-  // Безопасный рендер: markdownToHtml() экранирует исходный текст.
-  doc.innerHTML = markdown
-    ? markdownToHtml(markdown)
-    : '<p class="wizard-paper__empty">Документ будет здесь после генерации.</p>';
 
   if (isPaid) {
+    // Полный текст — только после подтверждения оплаты.
+    // markdownToHtml() сам экранирует исходный текст, дополнительной
+    // обработки для безопасности не требуется.
+    doc.innerHTML = markdown
+      ? markdownToHtml(markdown)
+      : '<p class="wizard-paper__empty">Документ будет здесь после генерации.</p>';
     doc.classList.remove('is-blurred');
     if (paywall) paywall.hidden = true;
     if (download) download.hidden = false;
   } else {
+    // 1) Берём безопасные первые 30% (шапка + описание).
+    const preview = _truncateToPreviewPart(markdown);
+    // 2) Генерируем декоративную «рыбу» нужного объёма — без юридического
+    //    смысла, чтобы пользователь при попытке скопировать получил мусор,
+    //    а не текст документа.
+    const fakeBody = _generateFishText(Math.max(400, (markdown || '').length));
+    // 3) Склеиваем и безопасно рендерим: реальный текст подписной части
+    //    НИКОГДА не попадает в DOM до подтверждения оплаты.
+    const safeMarkdown = preview
+      ? preview + '\n\n' + fakeBody
+      : fakeBody;
+    doc.innerHTML = markdownToHtml(safeMarkdown);
     doc.classList.add('is-blurred');
     if (paywall) paywall.hidden = false;
     if (download) download.hidden = true;
@@ -209,6 +316,11 @@ export function renderDocument(opts = {}) {
 /**
  * Кнопка «Готово →» на STAGE_2: финальный sync-checklist + advance_stage=true.
  * Сервер (см. backend/api/router_wizard.py) возвращает current_stage=STAGE_3.
+ *
+ * Сразу после успешного advance запрашиваем /api/wizard/state, чтобы
+ * отрендерить документ: на этом этапе оплаты нет, бэкенд отдаст только
+ * безопасное превью (первые 30% + маркер ``<<<PAYWALL_DOCUMENT>>>``),
+ * фронтенд подменит остаток декоративной «рыбой».
  */
 function bindStage2Advance() {
   const btn = document.querySelector('[data-wizard-advance]');
@@ -233,7 +345,31 @@ function bindStage2Advance() {
     } else {
       wizardState.setStage('STAGE_3');
     }
+    // Тянем актуальное состояние с уже отфильтрованным документом
+    // и отрисовываем его (с paywall, потому что оплаты ещё не было).
+    await _renderDocumentFromState();
   });
+}
+
+/**
+ * Универсальный помощник: запросить состояние с бэкенда и отрендерить
+ * документ с учётом ``is_packed``. Используется:
+ *   * сразу после advance с STAGE_2 на STAGE_3 (оплаты ещё нет);
+ *   * при первичной загрузке страницы, если пользователь уже на STAGE_3;
+ *   * после успешной оплаты (refreshPaymentState вызывает аналогичную
+ *     логику, но жёстко с ``isPaid: true``).
+ */
+async function _renderDocumentFromState() {
+  const { data } = await api('GET', '/api/wizard/state');
+  if (!data || !data.session) return;
+  const session = data.session;
+  if (session.current_stage !== 'STAGE_3') return;
+  const md = session.final_document_markdown || '';
+  const doc = document.querySelector('[data-wizard-document]');
+  if (doc) {
+    doc.dataset.rawMarkdown = md;
+  }
+  renderDocument({ markdown: md, isPaid: Boolean(session.is_paid) });
 }
 
 /**
@@ -289,6 +425,12 @@ function bindStage1Submit() {
  * Paywall-кнопка «Разблокировать» на STAGE_3: создаёт счёт в Робокассе через
  * /api/payment/create и открывает существующее окно оплаты. После фактической
  * оплаты (successURL) — refresh /api/wizard/state и снять блюр.
+ *
+ * ВАЖНО: передаём ``shp_session_id`` (UUID Wizard-сессии) в /api/payment/create,
+ * чтобы сервер пробросил его Робокассе через ``custom_shp``. После оплаты
+ * Робокасса вернёт его транзитом в Result URL, и webhook'у
+ * ``/api/payments/robokassa-webhook`` останется только найти сессию по UUID
+ * и пометить ``is_paid=True``.
  */
 function bindStage3Paywall() {
   const btn = document.querySelector('[data-wizard-pay]');
@@ -296,10 +438,19 @@ function bindStage3Paywall() {
   btn.dataset.bound = '1';
   btn.addEventListener('click', async () => {
     btn.disabled = true;
-    // 1. Создаём счёт.
-    const { ok, data } = await api('POST', '/api/payment/create', {
-      service: 'document',
-    });
+    // 1. Создаём счёт, передавая UUID Wizard-сессии. UUID берём из
+    //    wizardState (источник правды — ответ /api/wizard/state);
+    //    если его нет, пробуем резервный путь через DOM-атрибут.
+    let sessionId = wizardState.getSessionId() || '';
+    if (!sessionId) {
+      const root = document.querySelector('[data-wizard-stepper]');
+      sessionId = (root && root.dataset && root.dataset.sessionId) || '';
+    }
+    const payload = { service: 'document' };
+    if (sessionId) {
+      payload.shp_session_id = sessionId;
+    }
+    const { ok, data } = await api('POST', '/api/payment/create', payload);
     if (!ok || !data || !data.payment_url) {
       btn.disabled = false;
       toast('Не удалось открыть окно оплаты', 'error');
@@ -322,14 +473,35 @@ function bindStage3Paywall() {
  * Опросить /api/wizard/state и, если is_paid уже true, перерисовать документ
  * без блюра. Вызывается после успешного возврата с Робокассы (callback
  * successURL или событие focus окна после оплаты).
+ *
+ * Сервер при ``is_paid == true`` возвращает ``session.final_document_markdown``
+ * уже размаскированным (см. backend.core.anonymizer.deanonymize_document):
+ * реальные ФИО/адреса/телефоны подставлены вместо плейсхолдеров
+ * ``[ФИО_1]`` и т.п. Поэтому фронтенд передаёт Markdown «как есть», без
+ * какой-либо дополнительной обработки.
  */
 export async function refreshPaymentState() {
   const { data } = await api('GET', '/api/wizard/state');
-  if (data && data.session && data.session.is_paid) {
-    const doc = document.querySelector('[data-wizard-document]');
-    const raw = doc ? doc.dataset.rawMarkdown || '' : '';
-    renderDocument({ markdown: raw, isPaid: true });
+  if (!data || !data.session) return;
+  const session = data.session;
+  if (!session.is_paid) {
+    // Оплата ещё не подтверждена (или вебхук Робокассы ещё не пришёл).
+    // Ничего не делаем — пользователь увидит текущее состояние paywall.
+    return;
   }
+  if (session.current_stage !== 'STAGE_3') {
+    // Не наша стадия — нечего рендерить.
+    return;
+  }
+  // Берём уже deanonymized Markdown с сервера. Прячем его «эталон» в
+  // ``data-«ок»``, чтобы повторные вызовы refreshPaymentState (например,
+  // после очередного F5) могли взять ту же строку без лишнего запроса.
+  const md = session.final_document_markdown || '';
+  const doc = document.querySelector('[data-wizard-document]');
+  if (doc) {
+    doc.dataset.rawMarkdown = md;
+  }
+  renderDocument({ markdown: md, isPaid: true });
 }
 
 /** Главная функция модуля — bind'ит все этапы. Вызывать из entry-point. */
@@ -339,6 +511,12 @@ export function bindWizard() {
   _bindChecklistDelegation();
   bindStage2Advance();
   bindStage3Paywall();
+  // Если пользователь перезагрузил страницу уже на STAGE_3 — отрендерим
+  // документ (с paywall или без, по факту is_paid). Идемпотентно: если
+  // _recoverActiveWizardTask из script.js уже подхватил polling — мы
+  // всё равно запросим /state, но это дешёвый GET, а без него не
+  // восстановится документ.
+  _renderDocumentFromState();
   // Если пользователь ушёл со страницы — отменим висящий polling.
   window.addEventListener('beforeunload', () => stopWizardPoll());
   window.addEventListener('pagehide', () => stopWizardPoll());

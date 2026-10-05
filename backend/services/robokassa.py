@@ -13,12 +13,28 @@
 
 Алгоритм хеширования настраивается в личном кабинете Робокассы
 (``ROBOKASSA_HASH_ALGORITHM`` = ``md5`` или ``sha256``).
+
+Кастомные ``shp_*`` параметры (раздел 4 ТЗ, Wizard STAGE_3):
+
+    При формировании URL оплаты можно передать словарь ``custom_shp`` —
+    его элементы добавляются в query-string в формате ``shp_<key>=<value>``
+    и затем **возвращаются Робокассой** в Result URL / webhook без
+    дополнительной обработки. Это единственный надёжный канал, чтобы
+    связать платёж с конкретной сессией Wizard (``shp_session_id``).
+
+    Согласно официальной документации Робокассы:
+
+        * custom``shp_*`` параметры **не включаются** в расчёт подписи
+          формы и Success/Result URL — только пробрасываются транзитом;
+        * на стороне получателя они доступны как ``shp_<key>`` в
+          query-string (GET) и в form-data (POST).
 """
 from __future__ import annotations
 
 import hashlib
 import logging
 import uuid
+from typing import Mapping
 
 from backend.config import RobokassaSettings, robokassa_settings, settings
 
@@ -69,14 +85,29 @@ def result_signature(cfg: RobokassaSettings, out_sum: str, inv_id: str) -> str:
 
 
 def build_payment_url(
-    inv_id: str, amount: int, service: str, description: str = ""
+    inv_id: str,
+    amount: int,
+    service: str,
+    description: str = "",
+    custom_shp: Mapping[str, str] | None = None,
 ) -> str:
-    """Собрать ссылку на оплату с корректными параметрами Робокассы."""
+    """Собрать ссылку на оплату с корректными параметрами Робокассы.
+
+    Args:
+        inv_id: номер счёта в Робокассе.
+        amount: сумма в рублях.
+        service: код услуги (для человекочитаемого описания).
+        description: пользовательское описание платежа.
+        custom_shp: дополнительные ``shp_*`` параметры (например,
+            ``{"session_id": "<UUID>"}`` → ``shp_session_id=<UUID>``
+            в URL оплаты и в теле webhook). Используется, чтобы связать
+            платёж с конкретной Wizard-сессией.
+    """
     cfg = robokassa_settings()
     out_sum = f"{amount:.2f}"
     signature = payment_signature(cfg, out_sum, inv_id)
 
-    params = {
+    params: dict[str, str] = {
         "MerchantLogin": cfg.login,
         "OutSum": out_sum,
         "InvId": inv_id,
@@ -89,6 +120,15 @@ def build_payment_url(
     else:
         params["SuccessUrl2"] = cfg.absolute(cfg.success_url)
         params["FailUrl2"] = cfg.absolute(cfg.fail_url)
+
+    # Добавляем кастомные ``shp_*`` параметры. По документации они НЕ
+    # участвуют в расчёте подписи, но прокидываются транзитом в Result URL,
+    # что позволяет связать платёж с конкретной Wizard-сессией.
+    if custom_shp:
+        for key, value in custom_shp.items():
+            if not key or value is None:
+                continue
+            params[f"shp_{key}"] = str(value)
 
     query = "&".join(f"{key}={value}" for key, value in params.items())
     return f"{cfg.payment_url}?{query}"
@@ -122,12 +162,18 @@ def result_ack(inv_id: str) -> str:
     return f"OK{inv_id}"
 
 
-def create_invoice(service: str, session_hash: str) -> dict[str, object]:
+def create_invoice(
+    service: str,
+    session_hash: str,
+    custom_shp: Mapping[str, str] | None = None,
+) -> dict[str, object]:
     """Выставить счёт: сохранить платёж в БД и собрать ссылку на оплату.
 
     Args:
         service: код услуги (``consultation`` | ``checklist`` | ``document`` | ``pdf``).
         session_hash: псевдонимизированный хеш сессии (152-ФЗ).
+        custom_shp: кастомные ``shp_*`` параметры (например,
+            ``{"session_id": "<UUID>"}`` для связи с Wizard-сессией).
 
     Returns:
         Словарь с параметрами счёта для передачи фронтенду.
@@ -138,7 +184,9 @@ def create_invoice(service: str, session_hash: str) -> dict[str, object]:
     amount = price_for(service)
     inv_id = generate_inv_id()
     store.create_payment(inv_id, session_hash, service, amount)
-    payment_url = build_payment_url(inv_id, amount, service)
+    payment_url = build_payment_url(
+        inv_id, amount, service, custom_shp=custom_shp
+    )
 
     logger.info(
         "Счёт выставлен",

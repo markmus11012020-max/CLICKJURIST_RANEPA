@@ -29,7 +29,7 @@ class InMemoryConversationRepository(ConversationRepository):
     ) -> None:
         self._max = max(1, max_conversations)
         self._clock = clock or SystemClock()
-        self._items: "OrderedDict[str, Conversation]" = OrderedDict()
+        self._items: OrderedDict[str, Conversation] = OrderedDict()
         self._lock = threading.RLock()
 
     # -- ConversationRepository -----------------------------------------------

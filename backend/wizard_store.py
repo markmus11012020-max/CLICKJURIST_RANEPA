@@ -56,7 +56,7 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Protocol
 
 from backend.config import settings
@@ -96,7 +96,7 @@ _COLD_INDEX = (
 # Утилиты времени
 # ------------------------------------------------------------------------------
 def _utc_now_iso() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S")
 
 
 def _parse_iso(value: str | None) -> float:
@@ -442,7 +442,7 @@ def _save_cold(session: WizardSession) -> None:
         json.dumps(session.masking_metadata, ensure_ascii=False),
         session.final_document_markdown,
         1 if session.is_paid else 0,
-        None,  # payment_inv_id — заполняется позже из router_payment
+        session.payment_inv_id,
         now,
         now,
         finished,
@@ -503,3 +503,36 @@ def _load_cold(session_id: uuid.UUID) -> WizardSession | None:
     except Exception as exc:  # noqa: BLE001
         logger.warning("cold-cache: повреждённая запись %s (%s)", session_id, exc)
         return None
+
+
+def reset_for_tests() -> None:
+    """Очистить in-memory и cold-снимки визарда.
+
+    Используется ТОЛЬКО в pytest-фикстурах между тестами: иначе singleton
+    ``MemoryHotStore`` протекает между кейсами и состояния сессий
+    накладываются друг на друга.
+    """
+    global _hot
+    hot = get_hot_store()
+    # Поддерживаем и MemoryHotStore, и RedisHotStore: у обоих есть ``delete``,
+    # но у Redis может не быть «очистить всё» — пройдёмся по активным ключам.
+    if isinstance(hot, MemoryHotStore):
+        with hot._lock:  # noqa: SLF001
+            hot._data.clear()  # noqa: SLF001
+    else:
+        try:
+            keys = list(hot._data.keys()) if hasattr(hot, "_data") else []  # type: ignore[attr-defined]
+        except Exception:  # noqa: BLE001
+            keys = []
+        for key in keys:
+            try:
+                hot.delete(uuid.UUID(str(key)))  # type: ignore[arg-type]
+            except Exception:  # noqa: BLE001
+                pass
+
+    # Cold-таблица: удаляем все строки (для SQLite/PostgreSQL — единый путь).
+    try:
+        _init_cold_schema()
+        db_store._execute("DELETE FROM wizard_cases")  # noqa: SLF001
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("reset_for_tests: очистка wizard_cases не удалась: %s", exc)
