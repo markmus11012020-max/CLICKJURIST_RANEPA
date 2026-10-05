@@ -29,7 +29,14 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from backend.api import router_auth, router_docs, router_meta, router_payment, router_query
+from backend.api import (
+    router_auth,
+    router_docs,
+    router_meta,
+    router_payment,
+    router_query,
+    router_wizard,
+)
 from backend.config import PROJECT_ROOT, settings
 from backend.logging_setup import setup_logging
 from backend.startup_checks import validate_startup
@@ -132,6 +139,7 @@ app.include_router(router_docs.router)
 app.include_router(router_payment.router)
 app.include_router(router_auth.router)
 app.include_router(router_meta.router)
+app.include_router(router_wizard.router)
 
 
 # ------------------------------------------------------------------------------

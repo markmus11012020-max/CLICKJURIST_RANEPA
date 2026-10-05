@@ -211,6 +211,22 @@ class Settings(BaseSettings):
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/1"
     TASK_RESULT_TTL_S: int = 3600  # Хранить результат 1 час
 
+    # --- 14a. Wizard: гибридное хранилище состояний (STAGE_1) -----------------
+    # Горячий кэш визарда — Redis (production) или in-process dict (dev/тесты).
+    # Режим ``memory`` включается и тогда, когда ``TASK_BACKEND==memory`` —
+    # иначе в dev-окружении без Redis всё ломается на ровном месте.
+    WIZARD_HOT_BACKEND: Literal["memory", "redis"] = "memory"
+    WIZARD_REDIS_URL: str = "redis://localhost:6379/2"
+    # TTL «горячей» записи визарда (секунды). Если пользователь ушёл с сайта
+    # посередине шага — запись протухнет сама, без ручной сборки мусора.
+    # 24 часа — компромисс между UX (можно вернуться завтра) и режимом
+    # No-Data-Retention (сырой текст ПДн не залёживается).
+    WIZARD_HOT_TTL_S: int = 24 * 60 * 60
+    # Префикс ключа в Redis — чтобы не пересекаться с Celery-пространством.
+    WIZARD_REDIS_PREFIX: str = "cj:wizard:"
+    # Период фонового GC для in-memory backend (секунды).
+    WIZARD_GC_INTERVAL_S: int = 300
+
     # --- 15. Веб-фактчекинг: приоритетные домены (раздел 2.2 ТЗ) ------------
     PRIORITY_DOMAINS: str = "consultant.ru,garant.ru,pravo.gov.ru,sozd.duma.gov.ru"
     WEB_FETCH_TIMEOUT_S: int = 10
