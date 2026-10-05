@@ -11,7 +11,12 @@
  *
  *   2. STAGE_3: renderDocument({ markdown, isPaid })
  *      — markdown → HTML (через core/markdown.js — без внешних либ);
- *      — если !isPaid — наложить CSS-класс .is-blurred и показать paywall;
+ *      — если !isPaid — НЕ рендерить реальный текст документа: берём
+ *        только первые 30% (шапка + описание) и замещаем остальной объём
+ *        случайной декоративной «рыбой» (без юридического смысла).
+ *        CSS-блюр остаётся исключительно как декоративный задний план под
+ *        виджетом Робокассы — он НЕ защищает текст, поэтому подмена
+ *        содержимого в DOM обязательна;
  *      — если isPaid — снять блюр и показать кнопку скачивания.
  *
  *   3. bindStage2Advance() — кнопка «Готово →» на STAGE_2: шлёт финальный
@@ -173,11 +178,85 @@ async function _postChecklist(originCheckbox) {
 // ---------------------------------------------------------------------------
 
 /**
+ * Алфавит для генерации декоративной «рыбы» подписной части документа.
+ * Состоит из распространённых русских слогов — снаружи похоже на текст,
+ * но не несёт юридического смысла и безопасно для рендера.
+ */
+const _FISH_CHARS =
+  'абвгдеёжзийклмнопрстуфхцчшщъыьэюя' +
+  'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ' +
+  ' .,;:!?()';
+
+/**
+ * Сгенерировать декоративный «рыбный» текст заданной примерной длины.
+ * Возвращает строку, визуально похожую на связный русский текст, но без
+ * какого-либо отношения к реальному документу. Используется, чтобы
+ * подписная часть страницы выглядела заполненной, но не выдавала
+ * содержимое документа до подтверждения оплаты.
+ *
+ * @param {number} [minChars=800]
+ * @returns {string}
+ */
+function _generateFishText(minChars = 800) {
+  const out = [];
+  let total = 0;
+  // Чередуем «слова» разной длины и знаки препинания — так блок не выглядит
+  // как один поток символов и его сложнее отличить от настоящего текста при
+  // беглом просмотре, но скопировать из него всё равно нечего полезного.
+  while (total < minChars) {
+    const wordLen = 3 + Math.floor(Math.random() * 8);
+    let word = '';
+    for (let i = 0; i < wordLen; i++) {
+      const ch = _FISH_CHARS.charAt(Math.floor(Math.random() * 66));
+      word += i === 0 ? ch : ch.toLowerCase();
+    }
+    out.push(word);
+    total += wordLen + 1;
+    // Каждые 6–10 слов — точка с пробелом: визуально собираем в абзацы.
+    if (out.length % (6 + Math.floor(Math.random() * 5)) === 0) {
+      out.push('.');
+      total += 2;
+    } else {
+      out.push(' ');
+      total += 1;
+    }
+  }
+  return out.join('').trim() + '.';
+}
+
+/**
+ * Обрезать входящий Markdown до первых 30% — оставляем «Шапку» и
+ * «Описание», это безопасно показывать без оплаты (по ТЗ это публичные
+ * реквизиты документа, не ПДн). Реальная просительная часть и приложения
+ * скрываются за paywall и НИКОГДА не попадают в DOM до подтверждения оплаты.
+ *
+ * @param {string} md
+ * @returns {string}
+ */
+function _truncateToPreviewPart(md) {
+  if (!md) return '';
+  const cutoff = Math.max(1, Math.floor(md.length * 0.30));
+  let end = cutoff;
+  // Не разрываем посередине слова, если возможно.
+  while (end < md.length && /\S/.test(md[end])) end += 1;
+  return md.slice(0, end).trim();
+}
+
+/**
  * Отрисовать документ и (опционально) размыть его.
+ *
+ * БЕЗОПАСНОСТЬ PAYWALL (STAGE_3):
+ *   Если `isPaid === false`, настоящий текст документа в DOM НЕ рендерится.
+ *   Вместо этого берётся только публичная превью-часть (первые ~30% —
+ *   шапка и описание), а остальной объём замещается случайной «рыбой».
+ *   Эффект CSS-размытия (`.is-blurred` + `::after`) остаётся исключительно
+ *   как декоративный задний план под виджетом Робокассы — он НЕ является
+ *   механизмом защиты: без замены текста в DOM любой пользователь мог бы
+ *   прочитать документ через DevTools / выделение / accessibility tree.
+ *
  * @param {object} opts
  * @param {string} [opts.markdown] — текст документа
  * @param {boolean} opts.isPaid — флаг оплаты
- * @param {string} [opts.docType='complaint'] — тип документа (для заголовка)
  */
 export function renderDocument(opts = {}) {
   const doc = document.querySelector('[data-wizard-document]');
@@ -186,16 +265,30 @@ export function renderDocument(opts = {}) {
   if (!doc) return;
 
   const { markdown = '', isPaid = false } = opts;
-  // Безопасный рендер: markdownToHtml() экранирует исходный текст.
-  doc.innerHTML = markdown
-    ? markdownToHtml(markdown)
-    : '<p class="wizard-paper__empty">Документ будет здесь после генерации.</p>';
 
   if (isPaid) {
+    // Полный текст — только после подтверждения оплаты.
+    // markdownToHtml() сам экранирует исходный текст, дополнительной
+    // обработки для безопасности не требуется.
+    doc.innerHTML = markdown
+      ? markdownToHtml(markdown)
+      : '<p class="wizard-paper__empty">Документ будет здесь после генерации.</p>';
     doc.classList.remove('is-blurred');
     if (paywall) paywall.hidden = true;
     if (download) download.hidden = false;
   } else {
+    // 1) Берём безопасные первые 30% (шапка + описание).
+    const preview = _truncateToPreviewPart(markdown);
+    // 2) Генерируем декоративную «рыбу» нужного объёма — без юридического
+    //    смысла, чтобы пользователь при попытке скопировать получил мусор,
+    //    а не текст документа.
+    const fakeBody = _generateFishText(Math.max(400, (markdown || '').length));
+    // 3) Склеиваем и безопасно рендерим: реальный текст подписной части
+    //    НИКОГДА не попадает в DOM до подтверждения оплаты.
+    const safeMarkdown = preview
+      ? preview + '\n\n' + fakeBody
+      : fakeBody;
+    doc.innerHTML = markdownToHtml(safeMarkdown);
     doc.classList.add('is-blurred');
     if (paywall) paywall.hidden = false;
     if (download) download.hidden = true;

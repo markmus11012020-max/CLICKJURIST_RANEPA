@@ -3401,7 +3401,13 @@ footer { text-align:center; padding:40px 22px; color:var(--text-mute); font-size
 
 /* На мобильных — схлопываем номера/лейблы в одну строку «Шаг N из 3: …». */
 @media (max-width: 640px) {
-  .wizard-stepper { padding: 0 12px; }
+  .wizard-stepper {
+    padding: 0 12px;
+    /* 44px — минимальный «тач-таргет» по гайдлайнам Apple/Google,
+       чтобы пользователь мог уверенно попасть пальцем по степперу
+       при скролле вниз (sticky-элемент на узких экранах). */
+    min-height: 44px;
+  }
   .wizard-stepper__list { display: none; }
   .wizard-stepper__counter {
     flex: 1 1 auto;
@@ -3755,7 +3761,10 @@ footer { text-align:center; padding:40px 22px; color:var(--text-mute); font-size
   max-width: 720px;
   margin: 0 auto 24px;
   padding: 56px 64px;
-  background: #ffffff;
+  /* Мягкий пастельный оттенок слоновой кости — комфортнее для глаз
+     в тёмной теме, чем чистый белый, который «слепит» на контрасте
+     с тёмным фоном страницы. */
+  background: #fcfbfa;
   color: #111;
   border-radius: 6px;
   box-shadow: 0 18px 40px -22px rgba(0, 0, 0, .55);
