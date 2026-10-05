@@ -347,6 +347,31 @@
         <span class="stepper__price" data-step-price="document">— ₽</span>
       </li>
     </ol>
+    <!-- ===== Wizard (Стадия 2 — UI) ============================================
+         Компактный липлош прогресса высотой 40px; переключение между тремя
+         секциями data-stage="STAGE_X" делает WizardState.setStage().
+         Семантика: nav + ol; на мобильных (≤640px) схлопывается в строку
+         «Шаг N из 3: Название», см. CSS .wizard-stepper__counter.
+    ====================================================================== -->
+    <nav class="wizard-stepper" aria-label="Прогресс мастера" data-wizard-stepper>
+      <ol class="wizard-stepper__list">
+        <li class="wizard-stepper__item is-current" data-wizard-stage="STAGE_1">
+          <span class="wizard-stepper__num" aria-hidden="true">1</span>
+          <span class="wizard-stepper__label">Ситуация</span>
+        </li>
+        <li class="wizard-stepper__sep" aria-hidden="true"></li>
+        <li class="wizard-stepper__item" data-wizard-stage="STAGE_2">
+          <span class="wizard-stepper__num" aria-hidden="true">2</span>
+          <span class="wizard-stepper__label">Стратегия</span>
+        </li>
+        <li class="wizard-stepper__sep" aria-hidden="true"></li>
+        <li class="wizard-stepper__item" data-wizard-stage="STAGE_3">
+          <span class="wizard-stepper__num" aria-hidden="true">3</span>
+          <span class="wizard-stepper__label">Документ</span>
+        </li>
+      </ol>
+      <span class="wizard-stepper__counter" data-wizard-counter aria-live="polite">Шаг 1 из 3: Ситуация</span>
+    </nav>
     <div class="steps-grid">
       <section id="consult" class="card step-card">
       <header class="card-head"><h2>Шаг 1. Юридическая консультация</h2><div class="card-head__actions"><button type="button" class="step-expand" id="stepExpandBtn" aria-pressed="false" aria-label="Развернуть на весь экран" title="Развернуть на весь экран — удобнее вводить длинный текст"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8V5a2 2 0 0 1 2-2h3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M21 16v3a2 2 0 0 1-2 2h-3"/></svg><span>Развернуть</span></button><span class="badge" id="priceConsult">— ₽</span></div></header>
@@ -597,6 +622,98 @@
       </div>
     </aside>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <!-- ===== Wizard: секции STAGE_1 / STAGE_2 / STAGE_3 =========================
+         Скрыты по умолчанию (hidden). WizardState.setStage() переключает
+         ровно одну секцию за раз; остальные получают атрибут hidden.
+         Семантический HTML5: <section> с aria-labelledby; <form> для ввода.
+    ====================================================================== -->
+    <section class="wizard-section" data-stage="STAGE_1" aria-labelledby="wizard-h1" hidden>
+      <h2 id="wizard-h1" class="wizard-section__title">Шаг 1. Опишите ситуацию</h2>
+      <p class="wizard-section__sub">ИИ проведёт правовой анализ, замаскирует персональные данные и проверит ответ по 2–3 источникам.</p>
+      <form class="wizard-form" data-wizard-form novalidate>
+        <label class="wizard-field">
+          <span class="wizard-field__label">Ваша ситуация</span>
+          <textarea id="wizardInput" rows="6" placeholder="Например: соседи залили квартиру, управляющая компания отказывается возмещать ущерб." required></textarea>
+        </label>
+        <div class="wizard-form__actions">
+          <button type="submit" class="btn primary wizard-form__submit" data-wizard-submit>
+            <span class="wizard-form__submit-label">Запустить анализ</span>
+            <svg class="wizard-form__arrow" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 5 7 7-7 7"/></svg>
+          </button>
+        </div>
+      </form>
+
+      <!-- Skeleton Loader (STAGE_1 — пока крутится пайплайн анализа) -->
+      <div class="wizard-loader" data-wizard-loader hidden>
+        <div class="wizard-loader__head">
+          <span class="wizard-loader__spinner" aria-hidden="true"></span>
+          <span class="wizard-loader__text" data-wizard-loader-text>Идёт правовой анализ…</span>
+        </div>
+        <div class="wizard-skeleton" aria-hidden="true">
+          <div class="wizard-skeleton__line wizard-skeleton__line--title"></div>
+          <div class="wizard-skeleton__line"></div>
+          <div class="wizard-skeleton__line wizard-skeleton__line--short"></div>
+          <div class="wizard-skeleton__line"></div>
+          <div class="wizard-skeleton__line wizard-skeleton__line--short"></div>
+        </div>
+        <div class="wizard-progress" data-wizard-progress>
+          <div class="wizard-progress__fill" data-wizard-progress-fill style="width:0%"></div>
+          <span class="wizard-progress__label" data-wizard-progress-label>0%</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="wizard-section" data-stage="STAGE_2" aria-labelledby="wizard-h2" hidden>
+      <h2 id="wizard-h2" class="wizard-section__title">Шаг 2. Стратегия действий</h2>
+      <p class="wizard-section__sub">Правовая квалификация и пошаговый чек-лист. Отметьте выполненные пункты — состояние мгновенно сохраняется.</p>
+
+      <article class="wizard-verdict" data-wizard-verdict aria-label="Правовой вердикт">
+        <!-- Заполняется WizardRender.renderVerdict() из ai_qualification -->
+      </article>
+
+      <ul class="wizard-checklist" data-wizard-checklist aria-label="Чек-лист действий">
+        <!-- Динамически: <li> с чекбоксом и saved-индикатором, см. features/wizard.js -->
+      </ul>
+
+      <div class="wizard-form__actions">
+        <button type="button" class="btn primary wizard-form__submit" data-wizard-advance>
+          <span class="wizard-form__submit-label">Перейти к документу</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="wizard-section" data-stage="STAGE_3" aria-labelledby="wizard-h3" hidden>
+      <h2 id="wizard-h3" class="wizard-section__title">Шаг 3. Готовый документ</h2>
+
+      <!-- A4-«лист» с подложкой: контент рендерится из final_document_markdown -->
+      <article class="wizard-paper" data-wizard-document aria-label="Документ">
+        <!-- Заполняется WizardRender.renderDocument() -->
+      </article>
+
+      <!-- Paywall-блок поверх нижней части документа (если !is_paid) -->
+      <div class="wizard-paywall" data-wizard-paywall hidden>
+        <div class="wizard-paywall__inner">
+          <span class="wizard-paywall__lock" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </span>
+          <h3 class="wizard-paywall__title">Документ готов и проверен</h3>
+          <p class="wizard-paywall__text">Нижняя часть с реквизитами и приложениями скрыта. Чтобы разблокировать полный документ и скачать его — оплатите через Робокассу.</p>
+          <button type="button" class="btn primary wizard-paywall__btn" data-wizard-pay>
+            <span>Разблокировать документ · 150&nbsp;₽</span>
+          </button>
+          <p class="wizard-paywall__hint">После успешной оплаты блюр снимается автоматически, а кнопка скачивания становится активной.</p>
+        </div>
+      </div>
+
+      <!-- Кнопка скачивания — видна только при is_paid=true -->
+      <div class="wizard-download" data-wizard-download hidden>
+        <button type="button" class="btn primary" data-wizard-download-btn>
+          <span>Скачать документ</span>
+        </button>
+        <span class="wizard-download__hint">Документ оплачен — можно скачивать и распечатывать.</span>
+      </div>
+    </section>
   </main>
   <footer class="site-footer" aria-label="Подвал сайта">
     <div class="site-footer__inner">

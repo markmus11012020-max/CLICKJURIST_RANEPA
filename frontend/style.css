@@ -3296,3 +3296,579 @@ footer { text-align:center; padding:40px 22px; color:var(--text-mute); font-size
     line-height: 1.5;
   }
 }
+
+/* ============================================================================
+ * WIZARD UI (Стадия 2 — frontend)
+ *
+ * Пошаговый мастер: компактный степпер (≤40px) + три секции STAGE_1/2/3.
+ * Цвета берутся из тех же CSS Custom Properties, что и остальной сайт
+ * (``--accent``, ``--bg-1``, ``--text``, ``--radius``), чтобы Wizard
+ * визуально был частью существующего дизайна.
+ *
+ * Соглашения:
+ *   * touch-target ≥44×44px на каждой интерактивной «коробке» (iOS HIG / WCAG 2.5.5);
+ *   * Shimmer на скелетоне — через background-position, без JS;
+ *   * Paywall blur делается через :filter + ::after с линейным градиентом —
+ *     чтобы текст «затухал», а не «обрывался» резкой границей;
+ *   * mobile-first: на ≤640px степпер превращается в строку «Шаг N из 3: …».
+ * ============================================================================ */
+
+/* --- Wizard Stepper ------------------------------------------------------- */
+.wizard-stepper {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 40px;
+  padding: 0 18px;
+  margin: 14px 0 22px;
+  background: linear-gradient(180deg, rgba(20, 26, 41, 0.92), rgba(20, 26, 41, 0.78));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  font-size: 13px;
+  color: var(--text-soft);
+}
+
+.wizard-stepper__list {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1 1 auto;
+}
+
+.wizard-stepper__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  color: var(--text-mute);
+  cursor: default;
+  transition: color .18s ease;
+}
+
+.wizard-stepper__item.is-done { color: var(--text-soft); }
+.wizard-stepper__item.is-done .wizard-stepper__num {
+  background: var(--accent-deeper);
+  color: #fff;
+}
+
+.wizard-stepper__item.is-current {
+  color: var(--text);
+  background: rgba(var(--accent-rgb), .14);
+}
+
+.wizard-stepper__num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--bg-2);
+  color: var(--text-mute);
+  font-size: 12px;
+  font-weight: 600;
+  transition: background .18s ease;
+}
+
+.wizard-stepper__item.is-current .wizard-stepper__num {
+  background: var(--accent);
+  color: #07141a;
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), .25);
+}
+
+.wizard-stepper__sep {
+  flex: 0 0 18px;
+  height: 1px;
+  background: var(--line);
+}
+
+.wizard-stepper__counter {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-mute);
+  font-size: 12px;
+}
+
+/* На мобильных — схлопываем номера/лейблы в одну строку «Шаг N из 3: …». */
+@media (max-width: 640px) {
+  .wizard-stepper { padding: 0 12px; }
+  .wizard-stepper__list { display: none; }
+  .wizard-stepper__counter {
+    flex: 1 1 auto;
+    font-size: 13px;
+    text-align: center;
+  }
+}
+
+/* --- Wizard Section (общий контейнер STAGE_1/2/3) ------------------------ */
+.wizard-section {
+  display: block;
+  padding: 28px 26px 36px;
+  margin-bottom: 28px;
+  background: linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 100%);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  /* [hidden]{display:none!important} из глобального селектора снимет нас, если
+     WizardState выставит hidden=false на нужной секции. */
+}
+
+.wizard-section__title {
+  margin: 0 0 6px;
+  font-size: clamp(20px, 2.4vw, 26px);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.wizard-section__sub {
+  margin: 0 0 22px;
+  color: var(--text-soft);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+/* --- STAGE_1: форма ввода ----------------------------------------------- */
+.wizard-form { display: flex; flex-direction: column; gap: 16px; }
+
+.wizard-field { display: flex; flex-direction: column; gap: 6px; }
+
+.wizard-field__label {
+  font-size: 13px;
+  color: var(--text-soft);
+  letter-spacing: .01em;
+}
+
+.wizard-field textarea {
+  width: 100%;
+  min-height: 140px;
+  padding: 14px 16px;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text);
+  background: var(--bg-0);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  resize: vertical;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.wizard-field textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), .22);
+}
+
+.wizard-form__actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.wizard-form__submit {
+  min-height: 44px;
+  padding-inline: 22px;
+}
+
+.wizard-form__submit[disabled] { opacity: .55; cursor: progress; }
+
+.wizard-form__arrow { transition: transform .18s ease; }
+.wizard-form__submit:hover:not([disabled]) .wizard-form__arrow { transform: translateX(3px); }
+
+/* --- Skeleton Loader + Shimmer ------------------------------------------ */
+@keyframes wizard-shimmer {
+  0%   { background-position: -480px 0; }
+  100% { background-position: 480px 0; }
+}
+
+.wizard-loader {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  margin-top: 18px;
+  background: rgba(10, 14, 28, .35);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+}
+
+.wizard-loader__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-soft);
+  font-size: 13px;
+}
+
+.wizard-loader__spinner {
+  display: inline-block;
+  width: 16px; height: 16px;
+  border: 2px solid rgba(var(--accent-rgb), .25);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: wizard-spin .9s linear infinite;
+}
+@keyframes wizard-spin { to { transform: rotate(360deg); } }
+
+.wizard-skeleton { display: flex; flex-direction: column; gap: 12px; }
+
+.wizard-skeleton__line {
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    var(--bg-2) 0%,
+    rgba(var(--accent-rgb), .18) 50%,
+    var(--bg-2) 100%
+  );
+  background-size: 480px 100%;
+  animation: wizard-shimmer 1.6s ease-in-out infinite;
+}
+.wizard-skeleton__line--title { height: 18px; width: 60%; }
+.wizard-skeleton__line--short { width: 70%; }
+
+.wizard-progress {
+  position: relative;
+  height: 6px;
+  background: var(--bg-0);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.wizard-progress__fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-deeper), var(--accent));
+  border-radius: inherit;
+  transition: width .35s ease;
+}
+.wizard-progress__label {
+  position: absolute;
+  right: 0;
+  top: -18px;
+  font-size: 11px;
+  color: var(--text-mute);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Уважаем prefers-reduced-motion: убираем шиммер, оставляем плоскую заливку. */
+@media (prefers-reduced-motion: reduce) {
+  .wizard-skeleton__line {
+    animation: none;
+    background: var(--bg-2);
+  }
+  .wizard-loader__spinner { animation-duration: 2.5s; }
+}
+
+/* --- STAGE_2: вердикт + чек-лист ---------------------------------------- */
+.wizard-verdict {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+  margin-bottom: 20px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.wizard-verdict__title {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.wizard-verdict__row {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  font-size: 13px;
+  color: var(--text-soft);
+  flex-wrap: wrap;
+}
+
+.wizard-verdict__label {
+  flex: 0 0 150px;
+  color: var(--text-mute);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.wizard-verdict__value { color: var(--text); font-weight: 500; }
+
+.wizard-verdict__chips { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.wizard-verdict__chip {
+  display: inline-block;
+  padding: 3px 9px;
+  font-size: 12px;
+  background: rgba(var(--accent-rgb), .14);
+  border: 1px solid rgba(var(--accent-rgb), .35);
+  border-radius: 999px;
+  color: var(--accent-soft);
+}
+
+.wizard-verdict__deadlines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.wizard-verdict__deadlines li {
+  font-size: 13px;
+  color: var(--text-soft);
+  padding-left: 14px;
+  position: relative;
+}
+.wizard-verdict__deadlines li::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 8px;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* Список чек-боксов — touch-target ≥44×44 */
+.wizard-checklist {
+  list-style: none;
+  margin: 0 0 22px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wizard-checklist__empty {
+  padding: 14px 16px;
+  text-align: center;
+  color: var(--text-mute);
+  font-size: 13px;
+  background: var(--bg-1);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+}
+
+.wizard-checklist__item { display: block; }
+
+.wizard-checklist__label {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;           /* WCAG 2.5.5: touch-target ≥44px */
+  padding: 10px 14px;
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease;
+}
+
+.wizard-checklist__label:hover { border-color: var(--line-strong); }
+
+.wizard-checklist__label:has(.wizard-checklist__cb:checked) {
+  background: rgba(var(--accent-rgb), .10);
+  border-color: rgba(var(--accent-rgb), .45);
+}
+
+/* Сам чекбокс визуально скрыт, но кликабелен по всему label. */
+.wizard-checklist__cb {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0);
+  white-space: nowrap; border: 0;
+}
+.wizard-checklist__cb:focus-visible + .wizard-checklist__box {
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), .35);
+}
+
+.wizard-checklist__box {
+  flex: 0 0 22px;
+  width: 22px; height: 22px;
+  border: 2px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--bg-0);
+  position: relative;
+  transition: background .15s ease, border-color .15s ease;
+}
+.wizard-checklist__cb:checked + .wizard-checklist__box {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.wizard-checklist__cb:checked + .wizard-checklist__box::after {
+  content: "";
+  position: absolute;
+  left: 4px; top: 0px;
+  width: 6px; height: 12px;
+  border: solid #07141a;
+  border-width: 0 2.5px 2.5px 0;
+  transform: rotate(45deg);
+}
+
+.wizard-checklist__text {
+  flex: 1 1 auto;
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.45;
+}
+.wizard-checklist__cb:checked ~ .wizard-checklist__text {
+  color: var(--text-soft);
+  text-decoration: line-through;
+  text-decoration-color: rgba(var(--accent-rgb), .6);
+}
+
+.wizard-checklist__saved {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: rgba(var(--accent-rgb), .18);
+  color: var(--accent-soft);
+  opacity: 0;
+  transform: scale(.6);
+  transition: opacity .18s ease, transform .18s ease;
+}
+.wizard-checklist__saved.is-shown {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* --- STAGE_3: документ-A4 + paywall blur ------------------------------- */
+.wizard-paper {
+  /* A4-пропорции: 210×297 мм ≈ 1:1.414 */
+  max-width: 720px;
+  margin: 0 auto 24px;
+  padding: 56px 64px;
+  background: #ffffff;
+  color: #111;
+  border-radius: 6px;
+  box-shadow: 0 18px 40px -22px rgba(0, 0, 0, .55);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 14px;
+  line-height: 1.6;
+  /* Плавный «затухающий» блюр — для !isPaid ставится .is-blurred */
+  position: relative;
+  transition: filter .25s ease;
+}
+
+.wizard-paper h1, .wizard-paper h2, .wizard-paper h3 {
+  color: #111;
+  font-family: inherit;
+  margin: 0 0 14px;
+  -webkit-text-fill-color: #111;
+  background: none;
+}
+
+.wizard-paper p { color: #1d1d1d; margin: 0 0 12px; }
+.wizard-paper ul, .wizard-paper ol { color: #1d1d1d; padding-left: 24px; }
+
+.wizard-paper__empty {
+  text-align: center;
+  color: #888 !important;
+  font-style: italic;
+}
+
+/* Печатный А4 на узких экранах — почти во весь наш документ. */
+@media (max-width: 760px) {
+  .wizard-paper { padding: 32px 24px; }
+}
+
+/* --- Paywall blur ------------------------------------------------------- */
+.wizard-paper.is-blurred {
+  /* Размытие нижней половины — через :filter + ::after с градиентной маской. */
+  filter: blur(0);
+}
+.wizard-paper.is-blurred::after {
+  content: "";
+  position: absolute;
+  inset: 50% 0 0 0;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, .55) 30%,
+    rgba(20, 26, 41, .85) 70%,
+    rgba(20, 26, 41, .96) 100%
+  );
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+
+.wizard-paywall {
+  margin: -120px auto 24px;
+  max-width: 560px;
+  padding: 24px 28px;
+  background: linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 100%);
+  border: 1px solid rgba(var(--accent-rgb), .45);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 24px 50px -20px rgba(0, 0, 0, .55);
+  text-align: center;
+  position: relative;
+  z-index: 2;
+}
+
+.wizard-paywall__inner { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+
+.wizard-paywall__lock {
+  display: inline-flex;
+  align-items: center; justify-content: center;
+  width: 48px; height: 48px;
+  background: rgba(var(--accent-rgb), .14);
+  color: var(--accent-soft);
+  border-radius: 50%;
+}
+
+.wizard-paywall__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.wizard-paywall__text {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-soft);
+  max-width: 420px;
+  line-height: 1.55;
+}
+
+.wizard-paywall__btn {
+  min-height: 44px;
+  padding-inline: 24px;
+}
+
+.wizard-paywall__hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-mute);
+}
+
+.wizard-download {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.wizard-download__hint {
+  font-size: 12px;
+  color: var(--text-mute);
+}
