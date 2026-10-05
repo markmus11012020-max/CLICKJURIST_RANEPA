@@ -5,6 +5,7 @@
 перед этим хэшируется с солью проекта — в логах и в памяти не остаётся
 сырых значений, согласованно с остальным приложением (152-ФЗ).
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -21,15 +22,11 @@ class SessionIdentity:
     """
 
     def __init__(self, salt: str | None = None) -> None:
-        self._salt = (salt if salt is not None else settings.SESSION_HASH_SALT).encode(
-            "utf-8"
-        )
+        self._salt = (salt if salt is not None else settings.SESSION_HASH_SALT).encode("utf-8")
 
     def derive(self, client_session_id: str) -> str:
         """Получить псевдонимизированный ключ сессии."""
-        digest = hmac.new(
-            self._salt, client_session_id.encode("utf-8"), hashlib.sha256
-        ).hexdigest()
+        digest = hmac.new(self._salt, client_session_id.encode("utf-8"), hashlib.sha256).hexdigest()
         return digest
 
     @staticmethod
@@ -42,9 +39,7 @@ class SessionIdentity:
         """
         if not client_session_id or not (8 <= len(client_session_id) <= 128):
             return False
-        return all(
-            ch.isalnum() or ch in "-_" for ch in client_session_id
-        )
+        return all(ch.isalnum() or ch in "-_" for ch in client_session_id)
 
     @staticmethod
     def matches(left: str, right: str) -> bool:

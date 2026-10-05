@@ -87,8 +87,7 @@ CREATE TABLE IF NOT EXISTS wizard_cases (
 """
 _COLD_TABLE_POSTGRES = _COLD_TABLE_SQLITE.replace("INTEGER", "BIGINT")
 _COLD_INDEX = (
-    "CREATE INDEX IF NOT EXISTS idx_wizard_cases_paid "
-    "ON wizard_cases (is_paid, updated_at);"
+    "CREATE INDEX IF NOT EXISTS idx_wizard_cases_paid ON wizard_cases (is_paid, updated_at);"
 )
 
 
@@ -212,9 +211,7 @@ class MemoryHotStore:
                 except Exception as exc:  # noqa: BLE001
                     logger.warning("hot-cache GC failed: %s", exc)
 
-        self._gc_thread = threading.Thread(
-            target=_loop, name="cj-wizard-gc", daemon=True
-        )
+        self._gc_thread = threading.Thread(target=_loop, name="cj-wizard-gc", daemon=True)
         self._gc_thread.start()
 
 
@@ -238,9 +235,7 @@ class RedisHotStore:
         try:
             import redis  # type: ignore
         except ImportError:
-            logger.warning(
-                "redis не установлен — WIZARD_HOT_BACKEND=redis переключён на memory"
-            )
+            logger.warning("redis не установлен — WIZARD_HOT_BACKEND=redis переключён на memory")
             return
         try:
             self._client = redis.Redis.from_url(  # type: ignore[attr-defined]

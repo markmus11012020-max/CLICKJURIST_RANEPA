@@ -9,6 +9,7 @@ IP + отпечатку браузера, хранить признак ``is_fre
     * в БД НЕ сохраняется текст запроса, ФИО, адреса и иные ПДн —
       только псевдонимизированный ``session_hash`` и технические метрики.
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -93,9 +94,7 @@ class RequestStore:
     def __init__(self, database_url: str | None = None) -> None:
         self.database_url = database_url or settings.DATABASE_URL
         self.dialect = (
-            DIALECT_SQLITE
-            if self.database_url.startswith("sqlite")
-            else DIALECT_POSTGRES
+            DIALECT_SQLITE if self.database_url.startswith("sqlite") else DIALECT_POSTGRES
         )
         self._lock = threading.Lock()
         self._sqlite_path: str | None = None
@@ -187,9 +186,7 @@ class RequestStore:
     # --- Сессии -------------------------------------------------------------
     def get_session(self, session_hash: str) -> dict[str, Any] | None:
         """Вернуть запись сессии или ``None``, если сессия ещё не создана."""
-        rows = self._execute(
-            "SELECT * FROM sessions WHERE session_hash = ?", (session_hash,)
-        )
+        rows = self._execute("SELECT * FROM sessions WHERE session_hash = ?", (session_hash,))
         return rows[0] if rows else None
 
     def ensure_session(self, session_hash: str) -> dict[str, Any]:
@@ -237,9 +234,7 @@ class RequestStore:
 
     def get_network_quota(self, network_hash: str) -> dict[str, Any] | None:
         """Вернуть запись сетевого счётчика или ``None``."""
-        rows = self._execute(
-            "SELECT * FROM network_quota WHERE network_hash = ?", (network_hash,)
-        )
+        rows = self._execute("SELECT * FROM network_quota WHERE network_hash = ?", (network_hash,))
         return rows[0] if rows else None
 
     def network_free_requests_used(self, network_hash: str) -> int:
@@ -249,10 +244,7 @@ class RequestStore:
 
     def can_use_free_request_by_ip(self, network_hash: str) -> bool:
         """True, если по сетевому ключу ещё есть неиспользованный лимит."""
-        return (
-            self.network_free_requests_used(network_hash)
-            < settings.FREE_TIER_IP_REQUESTS
-        )
+        return self.network_free_requests_used(network_hash) < settings.FREE_TIER_IP_REQUESTS
 
     def consume_network_free_request(self, network_hash: str) -> None:
         """Списать один бесплатный запрос по сетевому ключу."""
@@ -293,9 +285,7 @@ class RequestStore:
         )
 
     # --- Платежи ------------------------------------------------------------
-    def create_payment(
-        self, inv_id: str, session_hash: str, service: str, amount: int
-    ) -> None:
+    def create_payment(self, inv_id: str, session_hash: str, service: str, amount: int) -> None:
         """Зафиксировать выставленный счёт Robokassa со статусом ``pending``."""
         self._execute(
             "INSERT INTO payments (inv_id, session_hash, service, amount, status, "
@@ -318,9 +308,7 @@ class RequestStore:
 
     def mark_payment_failed(self, inv_id: str) -> None:
         """Отметить счёт неуспешным (отказ или ошибка оплаты)."""
-        self._execute(
-            "UPDATE payments SET status = 'failed' WHERE inv_id = ?", (inv_id,)
-        )
+        self._execute("UPDATE payments SET status = 'failed' WHERE inv_id = ?", (inv_id,))
 
     # --- Технический журнал (без ПДн) ---------------------------------------
     def log_request(
@@ -355,9 +343,7 @@ class RequestStore:
         """Сводная анонимная статистика для служебного эндпоинта."""
         sessions = self._execute("SELECT COUNT(*) AS c FROM sessions")[0]["c"]
         payments = self._execute("SELECT COUNT(*) AS c FROM payments")[0]["c"]
-        paid = self._execute(
-            "SELECT COUNT(*) AS c FROM payments WHERE status = 'paid'"
-        )[0]["c"]
+        paid = self._execute("SELECT COUNT(*) AS c FROM payments WHERE status = 'paid'")[0]["c"]
         requests_total = self._execute("SELECT COUNT(*) AS c FROM request_log")[0]["c"]
         return {
             "sessions": int(sessions),

@@ -9,6 +9,7 @@
 Тесты работают с исходником виджета, а не с собранным бандлом: в проекте
 сборщика нет, браузер получает файлы как есть.
 """
+
 from __future__ import annotations
 
 import re
@@ -28,8 +29,7 @@ def test_styles_module_uses_two_levels_up():
     match = re.search(r"new URL\('([^']+)',\s*import\.meta\.url\)", source)
     assert match, "styles.js должен вычислять базу от import.meta.url"
     assert match.group(1) == "../../", (
-        f"ожидается '../../' из js/utils/ до каталога css/, "
-        f"получено {match.group(1)!r}"
+        f"ожидается '../../' из js/utils/ до каталога css/, получено {match.group(1)!r}"
     )
 
 
@@ -64,9 +64,5 @@ def test_widget_markup_has_hooks_for_every_component():
     # (`cj-message--${isBot ? 'bot' : 'user'}`), поэтому проверяется корневое
     # имя блока: его наличие означает, что блок действительно используется.
     roots = {name.split("--")[0] for name in used_classes}
-    missing = sorted(
-        name for name in roots if not re.search(re.escape(name) + r"\b", markup)
-    )
-    assert not missing, (
-        "в разметке нет элементов для классов из CSS: " + ", ".join(missing)
-    )
+    missing = sorted(name for name in roots if not re.search(re.escape(name) + r"\b", markup))
+    assert not missing, "в разметке нет элементов для классов из CSS: " + ", ".join(missing)

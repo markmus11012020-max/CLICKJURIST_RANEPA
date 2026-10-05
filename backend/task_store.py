@@ -16,6 +16,7 @@
     * ``failed`` — ошибка (есть ``error``);
     * ``cancelled`` — отменена пользователем.
 """
+
 from __future__ import annotations
 
 import logging
@@ -165,7 +166,8 @@ class MemoryTaskStore:
         cutoff = time.time() - self._ttl_s
         with self._lock:
             stale = [
-                tid for tid, rec in self._tasks.items()
+                tid
+                for tid, rec in self._tasks.items()
                 if rec.finished_at and _parse_iso(rec.finished_at) < cutoff
             ]
             for tid in stale:

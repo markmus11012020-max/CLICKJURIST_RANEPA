@@ -1,4 +1,5 @@
 """Pytest-фикстуры для ClickJurist Production."""
+
 import logging
 import os
 import sys

@@ -1,4 +1,5 @@
 """Тесты безопасности и псевдонимизации (раздел 2 ТЗ)."""
+
 from backend.security import (
     anonymized_session_id,
     client_fingerprint,
@@ -21,6 +22,7 @@ def test_session_hash_changes_with_salt():
     """Изменение соли даёт другой хеш (нельзя восстановить данные)."""
     h1 = compute_session_hash("1.2.3.4", "fp")
     from backend import config as cfg
+
     original = cfg.settings.SESSION_HASH_SALT
     cfg.settings.SESSION_HASH_SALT = "another-salt"
     h2 = compute_session_hash("1.2.3.4", "fp")
@@ -47,8 +49,10 @@ def test_inv_id_is_hashed():
 
 def test_client_fingerprint_fallback(monkeypatch):
     """Без заголовка отпечаток вычисляется из User-Agent."""
+
     class _R:
         headers = {"user-agent": "TestAgent/1.0", "accept-language": "ru-RU"}
         client = type("C", (), {"host": "127.0.0.1"})()
+
     fp = client_fingerprint(_R())  # type: ignore[arg-type]
     assert isinstance(fp, str) and len(fp) > 0

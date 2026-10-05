@@ -11,6 +11,7 @@
 поскольку кастомный middleware пишет в логгер, что конфликтует с pytest-овским
 log-capture handler-ом (см. ошибку httpx ``logger.info`` formatting).
 """
+
 from __future__ import annotations
 
 from backend.db import store
@@ -88,6 +89,7 @@ def test_session_gate_returns_402_after_free_tier_consumed():
     assert denial.status_code == 402
     # Robokassa-структура ответа 402 соответствует PaymentRequiredResponse.
     import json
+
     body = json.loads(denial.body.decode("utf-8"))
     assert body["service"] == "consultation"
     assert body["payment_url"].startswith("https://")
@@ -114,10 +116,13 @@ def test_payment_required_helper_builds_valid_payload():
     resp = _payment_required("checklist", session_hash)
     assert resp.status_code == 402
     import json
+
     body = json.loads(resp.body.decode("utf-8"))
     assert body["service"] == "checklist"
     assert body["payment_url"].startswith("https://")
     assert body["amount"] >= 1
+
+
 from backend.config import robokassa_settings
 from backend.services.robokassa import (
     payment_signature,

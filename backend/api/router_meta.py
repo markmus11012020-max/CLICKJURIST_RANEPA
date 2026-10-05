@@ -1,4 +1,5 @@
 """Служебные эндпоинты: сессия, тарифы, здоровье, статистика, SPA."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Request
@@ -149,6 +150,7 @@ def _make_legal_handler(_filename: str):
             status_code=404,
             content={"detail": f"Legal page '{_filename}' not found"},
         )
+
     handler.__name__ = f"legal_{_filename.replace('.', '_')}"
     return handler
 

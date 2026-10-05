@@ -13,6 +13,7 @@
 :func:`robokassa_settings` внизу файла. HTTP-логика эквайринга — в
 `backend/services/robokassa.py`.
 """
+
 from __future__ import annotations
 
 import sys
@@ -116,9 +117,7 @@ class Settings(BaseSettings):
     OLLAMA_BASE_URL: str = "http://127.0.0.1:11434"
     OLLAMA_MODEL: str = "qwen2.5:7b"
     OLLAMA_TIMEOUT_S: int = 120
-    YANDEX_GPT_URL: str = (
-        "https://llm.api.cloud.yandex.net/foundationModels/v1/completion"
-    )
+    YANDEX_GPT_URL: str = "https://llm.api.cloud.yandex.net/foundationModels/v1/completion"
     YANDEX_API_KEY: str = ""
     YANDEX_IAM_TOKEN: str = ""
     YANDEX_FOLDER_ID: str = ""
@@ -165,9 +164,7 @@ class Settings(BaseSettings):
 
     # --- 9. Zero-Storage Logging (Yandex Cloud Logging) ----------------------
     YANDEX_LOGGING_ENABLED: bool = False
-    YANDEX_LOGGING_URL: str = (
-        "https://logging.api.cloud.yandex.net/logging/v1/entries:write"
-    )
+    YANDEX_LOGGING_URL: str = "https://logging.api.cloud.yandex.net/logging/v1/entries:write"
     YANDEX_LOG_GROUP_ID: str = ""
 
     # --- 10. Robokassa -------------------------------------------------------

@@ -3,6 +3,7 @@
 Транспортный слой намеренно тонкий: DTO только описывают формат,
 а вся логика живёт в :mod:`chatbot.services`.
 """
+
 from __future__ import annotations
 
 from pydantic import BaseModel, Field

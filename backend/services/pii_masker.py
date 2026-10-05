@@ -15,6 +15,7 @@
 Режим ``MASKING_PROVIDER=regex`` полностью оффлайновый: LLM не вызывается,
 маскировка выполняется только регулярками (полезно для тестов и dev-среды).
 """
+
 from __future__ import annotations
 
 import json
@@ -39,9 +40,7 @@ logger = logging.getLogger(__name__)
 # ВАЖНО: они намеренно «узкие» — не трогают правовые данные (статьи, сроки, даты).
 # ------------------------------------------------------------------------------
 PATTERN_EMAIL = re.compile(r"\b[\w.+-]+@[\w-]+\.[\w.-]+\b")
-PATTERN_PHONE = re.compile(
-    r"(?:\+7|8|7)[\s\-()]*\d{3}[\s\-()]*\d{3}[\s\-]*\d{2}[\s\-]*\d{2}"
-)
+PATTERN_PHONE = re.compile(r"(?:\+7|8|7)[\s\-()]*\d{3}[\s\-()]*\d{3}[\s\-]*\d{2}[\s\-]*\d{2}")
 PATTERN_SNILS = re.compile(r"\b\d{3}-\d{3}-\d{3}\s?\d{2}\b")
 PATTERN_PASSPORT = re.compile(r"\b\d{2}\s\d{2}\s?№?\s?\d{6}\b")
 PATTERN_INN = re.compile(r"\bИНН[\s:№]*\d{10}\b|\bИНН[\s:№]*\d{12}\b")
@@ -158,6 +157,7 @@ def regex_mask(text: str) -> tuple[str, dict[str, int]]:
     masked = text
 
     for entity, pattern in _REGEX_RULES:
+
         def _replace(match: re.Match[str], entity: str = entity) -> str:
             value = match.group(0).strip()
             if not value:
@@ -193,9 +193,7 @@ def _fallback_summary(masked_text: str, entities: dict[str, int]) -> str:
                 break
         clean = cut.rstrip() + "…"
 
-    kinds = ", ".join(
-        f"{entity} — {count}" for entity, count in sorted(entities.items())
-    )
+    kinds = ", ".join(f"{entity} — {count}" for entity, count in sorted(entities.items()))
     if kinds:
         return f"Обезличенное описание ситуации: {clean} Маскированные сущности: {kinds}."
     return f"Обезличенное описание ситуации: {clean}"

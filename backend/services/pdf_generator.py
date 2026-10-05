@@ -20,6 +20,7 @@
 плейсхолдеры персональных данных (``[ORG_1]``, ``[SUM_1]`` и т. п.)
 на пустые линии для ручного заполнения.
 """
+
 from __future__ import annotations
 
 import io
@@ -220,11 +221,7 @@ def _register_styles(fonts: FontSet) -> dict[str, object]:
 
 def _escape_markup(text: str) -> str:
     """Экранировать служебные символы ReportLab (``<``, ``>``, ``&``)."""
-    return (
-        text.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-    )
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 def _sanitize_content(markup: str) -> str:
@@ -295,9 +292,7 @@ def _markdown_to_flowables(markup: str, styles: dict[str, object]) -> list:
             flowables.append(Spacer(1, 2 * 2.83465))
             continue
         if line.startswith("### "):
-            flowables.append(
-                Paragraph(_escape_markup(line[4:]), styles["heading"])
-            )
+            flowables.append(Paragraph(_escape_markup(line[4:]), styles["heading"]))
         elif line.startswith("## "):
             flowables.append(Paragraph(_escape_markup(line[3:]), styles["heading"]))
         elif line.startswith("# "):
@@ -333,12 +328,18 @@ def _build_shapka_flowables(styles: dict[str, object]) -> list:
 
     # Каждая строка: подпись поля + пустая линия для заполнения от руки.
     rows = [
-        [Paragraph(_escape_markup("ФИО:"), styles["shapka_label"]),
-         Paragraph(_escape_markup("________________________________"), styles["shapka_line"])],
-        [Paragraph(_escape_markup("Адрес:"), styles["shapka_label"]),
-         Paragraph(_escape_markup("________________________________"), styles["shapka_line"])],
-        [Paragraph(_escape_markup("Телефон:"), styles["shapka_label"]),
-         Paragraph(_escape_markup("________________________________"), styles["shapka_line"])],
+        [
+            Paragraph(_escape_markup("ФИО:"), styles["shapka_label"]),
+            Paragraph(_escape_markup("________________________________"), styles["shapka_line"]),
+        ],
+        [
+            Paragraph(_escape_markup("Адрес:"), styles["shapka_label"]),
+            Paragraph(_escape_markup("________________________________"), styles["shapka_line"]),
+        ],
+        [
+            Paragraph(_escape_markup("Телефон:"), styles["shapka_label"]),
+            Paragraph(_escape_markup("________________________________"), styles["shapka_line"]),
+        ],
     ]
 
     table = Table(
@@ -409,7 +410,8 @@ def build_pdf(
                 fonts.bold_path = None
         logger.info(
             "[PDF] Шрифты успешно зарегистрированы (name=%s, cyrillic=%s)",
-            fonts.name, fonts.cyrillic,
+            fonts.name,
+            fonts.cyrillic,
         )
         styles = _register_styles(fonts)
 
@@ -443,16 +445,18 @@ def build_pdf(
         document.build(flowables)
         elapsed_ms = int((time.perf_counter() - started) * 1000)
         logger.info(
-            "[PDF] doc.build() успешно завершен. Файл готов. "
-            "(%d мс, %d байт)",
-            elapsed_ms, buffer.tell(),
+            "[PDF] doc.build() успешно завершен. Файл готов. (%d мс, %d байт)",
+            elapsed_ms,
+            buffer.tell(),
         )
         return buffer.getvalue()
     except Exception as exc:  # noqa: BLE001
         elapsed_ms = int((time.perf_counter() - started) * 1000)
         logger.error(
             "[PDF] СБОЙ СБОРКИ через %s мс: %s: %s",
-            elapsed_ms, type(exc).__name__, exc,
+            elapsed_ms,
+            type(exc).__name__,
+            exc,
         )
         # Поднимаем дальше — пусть эндпоинт вернёт 500 за миллисекунды,
         # а не держит соединение открытым бесконечно.

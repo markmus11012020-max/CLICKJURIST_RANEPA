@@ -17,6 +17,7 @@
     * при любой ошибке приложение не падает — печатается предупреждение
       и используются значения локального ``.env``.
 """
+
 from __future__ import annotations
 
 import base64
@@ -47,8 +48,7 @@ SECRET_ENV_KEYS: frozenset[str] = frozenset(
 )
 
 METADATA_TOKEN_URL = (
-    "http://169.254.169.254/computeMetadata/v1/instance/"
-    "service-accounts/default/token"
+    "http://169.254.169.254/computeMetadata/v1/instance/service-accounts/default/token"
 )
 
 _lock = threading.Lock()
@@ -133,9 +133,9 @@ def decrypt_secrets(ciphertext_b64: str) -> dict[str, str]:
         print("[WARNING] Не удалось получить IAM-токен для Yandex KMS")
         return {}
 
-    base_url = os.getenv(
-        "YANDEX_KMS_URL", "https://kms.api.cloud.yandex.net/kms/v1/keys"
-    ).rstrip("/")
+    base_url = os.getenv("YANDEX_KMS_URL", "https://kms.api.cloud.yandex.net/kms/v1/keys").rstrip(
+        "/"
+    )
     url = f"{base_url}/{key_id}:decrypt"
     try:
         resp = requests.post(
@@ -209,8 +209,5 @@ def load_and_apply_secrets(force: bool = False) -> list[str]:
         _last_payload = secrets
         _last_load_ts = time.time()
         applied = apply_secrets(secrets)
-        print(
-            f"[OK] Yandex KMS: применено секретов — {len(applied)} "
-            f"({', '.join(applied)})"
-        )
+        print(f"[OK] Yandex KMS: применено секретов — {len(applied)} ({', '.join(applied)})")
         return applied

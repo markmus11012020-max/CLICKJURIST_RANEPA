@@ -9,6 +9,7 @@
 (:meth:`ChatOrchestrator.handle_message`) собирает тот же поток целиком,
 поэтому решения об источнике ответа не могут разойтись между путями.
 """
+
 from __future__ import annotations
 
 import logging
@@ -71,9 +72,7 @@ _SMALLTALK_RESPONSES: dict[str, str] = {
         "У меня всё отлично — я же работаю без выходных. "
         "А у вас как? Если что-то тревожит по правовому вопросу — расскажите, разберёмся."
     ),
-    "ping": (
-        "Я здесь 👋 Если есть вопрос по сервису — задавайте, я с радостью отвечу."
-    ),
+    "ping": ("Я здесь 👋 Если есть вопрос по сервису — задавайте, я с радостью отвечу."),
 }
 
 #: Быстрые ответы после small-talk — мягко возвращаем к теме сервиса.
@@ -87,32 +86,50 @@ _SMALLTALK_FOLLOW_UPS: tuple[QuickReply, ...] = (
 #: ``intent_resolver`` перевести текст в ключ категории и подобрать
 #: подходящий ответ из ``_SMALLTALK_RESPONSES``.
 _SMALLTALK_KEY_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
-    ("age", re.compile(
-        r"\b(сколько\s+(тебе|мне|ему|ей)\s+лет|тво(й|ё)\s+возраст|"
-        r"како(й|е)\s+(ты|вы)\s+(возраст|года?)|мне\s+\d+\s+лет)\b",
-        re.IGNORECASE,
-    )),
-    ("name", re.compile(
-        r"\b(как\s+тебя\s+(зовут|звать|имя)|"
-        r"тво(ё|е)\s+им(я|ени)|представ(ься|ись))\b",
-        re.IGNORECASE,
-    )),
-    ("who", re.compile(
-        r"^\s*(ты\s+кто|кто\s+ты|ты\s+что|что\s+ты)\s*[\?\.]?\s*$",
-        re.IGNORECASE,
-    )),
-    ("human", re.compile(
-        r"\b(ты\s+(человек|бот|робот|машина|нейросет|ии|живой|настоящ(ий|ая)))\b",
-        re.IGNORECASE,
-    )),
-    ("feelings", re.compile(
-        r"\b(как\s+(дела|жизнь|сам|сама)|что\s+нового)\b",
-        re.IGNORECASE,
-    )),
-    ("ping", re.compile(
-        r"^\s*(ау+|тест|проверк[аи]|алло|эй)\s*[\?\.!]*\s*$",
-        re.IGNORECASE,
-    )),
+    (
+        "age",
+        re.compile(
+            r"\b(сколько\s+(тебе|мне|ему|ей)\s+лет|тво(й|ё)\s+возраст|"
+            r"како(й|е)\s+(ты|вы)\s+(возраст|года?)|мне\s+\d+\s+лет)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "name",
+        re.compile(
+            r"\b(как\s+тебя\s+(зовут|звать|имя)|"
+            r"тво(ё|е)\s+им(я|ени)|представ(ься|ись))\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "who",
+        re.compile(
+            r"^\s*(ты\s+кто|кто\s+ты|ты\s+что|что\s+ты)\s*[\?\.]?\s*$",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "human",
+        re.compile(
+            r"\b(ты\s+(человек|бот|робот|машина|нейросет|ии|живой|настоящ(ий|ая)))\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "feelings",
+        re.compile(
+            r"\b(как\s+(дела|жизнь|сам|сама)|что\s+нового)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "ping",
+        re.compile(
+            r"^\s*(ау+|тест|проверк[аи]|алло|эй)\s*[\?\.!]*\s*$",
+            re.IGNORECASE,
+        ),
+    ),
 )
 
 
@@ -183,13 +200,9 @@ class ChatOrchestrator:
         conversation = self._repository.get_or_create(session_id)
         greeting = self._greeting.build(turn_count=conversation.turn_count)
 
-        already_greeted = any(
-            m.role is MessageRole.ASSISTANT for m in conversation.messages
-        )
+        already_greeted = any(m.role is MessageRole.ASSISTANT for m in conversation.messages)
         if not already_greeted:
-            conversation.add_message(
-                ChatMessage(role=MessageRole.ASSISTANT, text=greeting.text)
-            )
+            conversation.add_message(ChatMessage(role=MessageRole.ASSISTANT, text=greeting.text))
             self._repository.save(conversation)
         return greeting
 
@@ -236,9 +249,7 @@ class ChatOrchestrator:
 
         # 3. Потоковая генерация моделью.
         if self._llm.is_available():
-            streamed = yield from self._stream_with_llm(
-                cleaned, intent, conversation
-            )
+            streamed = yield from self._stream_with_llm(cleaned, intent, conversation)
             if streamed:
                 return
 
@@ -351,9 +362,7 @@ class ChatOrchestrator:
         )
 
     # -- Внутреннее: поток ----------------------------------------------------
-    def _emit_ready(
-        self, reply: BotReply, conversation: Conversation
-    ) -> Iterator[StreamEvent]:
+    def _emit_ready(self, reply: BotReply, conversation: Conversation) -> Iterator[StreamEvent]:
         """Отдать готовый ответ как поток событий ``META`` → ``DELTA``* → ``DONE``.
 
         Ответ из базы знаний известен целиком, но отправлять его одним
@@ -365,9 +374,7 @@ class ChatOrchestrator:
         событие ``META`` в любом случае несёт метку ``streamed``.
         """
         self._commit(conversation, reply)
-        yield StreamEvent.meta(
-            intent=reply.intent, source=reply.source.value, streamed=False
-        )
+        yield StreamEvent.meta(intent=reply.intent, source=reply.source.value, streamed=False)
 
         for piece in self._split_for_typing(reply.text):
             yield StreamEvent.delta(piece)
@@ -446,9 +453,7 @@ class ChatOrchestrator:
 
     def _commit(self, conversation: Conversation, reply: BotReply) -> None:
         """Записать ответ бота в историю диалога."""
-        conversation.add_message(
-            ChatMessage(role=MessageRole.ASSISTANT, text=reply.text)
-        )
+        conversation.add_message(ChatMessage(role=MessageRole.ASSISTANT, text=reply.text))
         self._repository.save(conversation)
 
     # -- Внутреннее: вспомогательное ------------------------------------------
@@ -469,7 +474,9 @@ class ChatOrchestrator:
             )
         if intent is Intent.STEPS:
             return (
-                QuickReply(id="document", label="Какие есть документы?", intent_hint=Intent.DOCUMENT.value),
+                QuickReply(
+                    id="document", label="Какие есть документы?", intent_hint=Intent.DOCUMENT.value
+                ),
                 QuickReply(id="pricing", label="Сколько стоит?", intent_hint=Intent.PRICING.value),
             )
         if intent is Intent.DOCUMENT:

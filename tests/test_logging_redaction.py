@@ -5,6 +5,7 @@
 number is required, not str``. Ошибка возникала в самом логировании,
 маскировала настоящую причину сбоя и теряла запись.
 """
+
 from __future__ import annotations
 
 import logging

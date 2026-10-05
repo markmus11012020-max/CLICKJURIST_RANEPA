@@ -14,6 +14,7 @@
 :class:`LLMError` — именно на этом исключении строится failover-оркестратор
 (раздел 3 ТЗ, `backend/services/llm_chain.py`).
 """
+
 from __future__ import annotations
 
 import json
@@ -107,8 +108,7 @@ def _post_json(
         # заголовках даёт именно это исключение. Превращаем в LLMError,
         # чтобы _call_with_failover мог переключиться на резерв.
         raise LLMError(
-            f"{provider}: недопустимые символы в HTTP-заголовках "
-            f"(вероятно кириллица) — {exc}"
+            f"{provider}: недопустимые символы в HTTP-заголовках (вероятно кириллица) — {exc}"
         ) from exc
     except requests.Timeout as exc:
         raise LLMError(f"{provider}: таймаут {timeout} с — {exc}") from exc
@@ -122,9 +122,7 @@ def _post_json(
     if response.status_code >= 500:
         raise LLMError(f"{provider}: сервер вернул HTTP {response.status_code}")
     if response.status_code >= 400:
-        raise LLMError(
-            f"{provider}: HTTP {response.status_code} — {response.text[:300]}"
-        )
+        raise LLMError(f"{provider}: HTTP {response.status_code} — {response.text[:300]}")
     try:
         return response.json()
     except ValueError as exc:
@@ -187,11 +185,11 @@ class AITunnelProvider(BaseProvider):
         return f"{settings.ROUTER_BASE_URL.rstrip('/')}/chat/completions"
 
     def chat(
-    self,
-    messages: list[dict[str, str]],
-    model: str | None = None,
-    temperature: float = 0.2,
-    max_tokens: int = 4000,
+        self,
+        messages: list[dict[str, str]],
+        model: str | None = None,
+        temperature: float = 0.2,
+        max_tokens: int = 4000,
     ) -> str:
         """Отправить запрос в AITunnel (OpenAI-совместимый протокол).
 
@@ -276,9 +274,7 @@ class AITunnelProvider(BaseProvider):
             raise LLMError(f"aitunnel: сетевая ошибка — {exc}") from exc
 
         if response.status_code >= 400:
-            raise LLMError(
-                f"aitunnel: HTTP {response.status_code} — {response.text[:300]}"
-            )
+            raise LLMError(f"aitunnel: HTTP {response.status_code} — {response.text[:300]}")
 
         # Читаем SSE-поток: строки вида "data: {...}\n\n", терминатор "data: [DONE]".
         for raw_line in response.iter_lines(decode_unicode=True):
@@ -287,7 +283,7 @@ class AITunnelProvider(BaseProvider):
             line = raw_line.strip()
             if not line.startswith("data:"):
                 continue
-            data_str = line[len("data:"):].strip()
+            data_str = line[len("data:") :].strip()
             if data_str == "[DONE]":
                 break
             try:
@@ -458,9 +454,7 @@ def get_provider(name: str) -> BaseProvider:
     }
     provider_cls = registry.get(name.strip().lower())
     if provider_cls is None:
-        raise LLMError(
-            f"Неизвестный LLM-провайдер '{name}'. Доступно: {sorted(registry)}"
-        )
+        raise LLMError(f"Неизвестный LLM-провайдер '{name}'. Доступно: {sorted(registry)}")
     return provider_cls()
 
 

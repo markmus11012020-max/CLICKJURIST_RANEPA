@@ -4,6 +4,7 @@
 санитайзер: он убирает мусор LLM, ограничивает длину и оставляет
 только безопасную подмножество Markdown.
 """
+
 from __future__ import annotations
 
 import re

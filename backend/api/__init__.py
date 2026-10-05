@@ -16,6 +16,7 @@
 * :mod:`backend.api.router_auth` — JWT-сессия;
 * :mod:`backend.api.router_meta` — сессия, тарифы, здоровье, статика.
 """
+
 from __future__ import annotations
 
 from backend.api.deps import payment_required, session_gate

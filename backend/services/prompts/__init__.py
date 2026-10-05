@@ -5,6 +5,7 @@
 их прежние имена — поэтому ``from backend.services.prompts import
 PROMPT_LLM_1`` продолжает работать без изменений в коде.
 """
+
 from __future__ import annotations
 
 from backend.services.prompts.analysis import PROMPT_STAGE2_ANALYSIS

@@ -1,4 +1,5 @@
 """Определение намерения посетителя по тексту сообщения."""
+
 from __future__ import annotations
 
 import re
@@ -176,9 +177,7 @@ class IntentResolver:
             return IntentMatch(intent=intent, score=1.0, matched_keywords=(stripped,))
         for phrase, candidate in EXACT_PHRASES.items():
             if stripped.startswith(phrase) and len(stripped) <= len(phrase) + 12:
-                return IntentMatch(
-                    intent=candidate, score=0.9, matched_keywords=(phrase,)
-                )
+                return IntentMatch(intent=candidate, score=0.9, matched_keywords=(phrase,))
         return None
 
     @staticmethod
@@ -211,11 +210,7 @@ class IntentResolver:
 
         intent, hits = matches[0]
         # Метки усиливают уверенность, если совпали с тем же намерением.
-        bonus = sum(
-            1
-            for marker in _HINT_MARKERS.get(intent, ())
-            if marker in normalized
-        )
+        bonus = sum(1 for marker in _HINT_MARKERS.get(intent, ()) if marker in normalized)
         tokens = normalized.split()
         meaningful = 1.0 if len(tokens) >= _MEANINGFUL_TOKENS else 0.75
         # Одно точное совпадение ключевого слова («документы», «оплатить»)
@@ -224,11 +219,7 @@ class IntentResolver:
         raw = (hits + bonus * 0.5) / 1.5
         score = max(0.0, min(1.0, raw * meaningful))
 
-        matched = tuple(
-            word
-            for word in self._collect_keywords(intent)
-            if word in normalized
-        )[:4]
+        matched = tuple(word for word in self._collect_keywords(intent) if word in normalized)[:4]
         return IntentMatch(intent=intent, score=score, matched_keywords=matched)
 
     def _collect_keywords(self, intent: Intent) -> tuple[str, ...]:

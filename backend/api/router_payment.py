@@ -1,4 +1,5 @@
 """Оплата через Robokassa (раздел 4 ТЗ)."""
+
 from __future__ import annotations
 
 import hashlib
@@ -34,9 +35,7 @@ def robokassa_keys_present() -> bool:
     return {login, pwd1, pwd2} > _ROBOKASSA_DEFAULTS
 
 
-def build_robokassa_url(
-    inv_id: str, amount: int, service: str, description: str = ""
-) -> str:
+def build_robokassa_url(inv_id: str, amount: int, service: str, description: str = "") -> str:
     """Собрать реальный URL Робокассы с MD5-подписью.
 
     Формула подписи (официальная документация Robokassa):
@@ -46,21 +45,14 @@ def build_robokassa_url(
     чтобы функция не падала при локальной отладке без реальных ключей.
     """
     login = (settings.ROBOKASSA_LOGIN or "demo_login").strip() or "demo_login"
-    password1 = (
-        settings.ROBOKASSA_PASSWORD1 or "demo_password_1"
-    ).strip() or "demo_password_1"
+    password1 = (settings.ROBOKASSA_PASSWORD1 or "demo_password_1").strip() or "demo_password_1"
     is_test = bool(settings.ROBOKASSA_TEST)
 
     out_sum = f"{amount:.2f}"
-    signature = hashlib.md5(
-        f"{login}:{out_sum}:{inv_id}:{password1}".encode()
-    ).hexdigest()
+    signature = hashlib.md5(f"{login}:{out_sum}:{inv_id}:{password1}".encode()).hexdigest()
 
     desc = description or f"ClickJurist: услуга «{service}»"
-    base_url = (
-        settings.ROBOKASSA_PAYMENT_URL
-        or "https://auth.robokassa.ru/Merchant/Index.aspx"
-    )
+    base_url = settings.ROBOKASSA_PAYMENT_URL or "https://auth.robokassa.ru/Merchant/Index.aspx"
     params = (
         f"MerchantLogin={login}"
         f"&OutSum={out_sum}"
@@ -184,9 +176,7 @@ async def api_payment_result(request: Request) -> Response:
         str(params.get("InvId", "")),
         str(params.get("SignatureValue", "")),
     )
-    return Response(
-        content=message, media_type="text/plain", status_code=200 if ok else 400
-    )
+    return Response(content=message, media_type="text/plain", status_code=200 if ok else 400)
 
 
 @router.get("/success")
@@ -262,7 +252,7 @@ def payment_result_page(success: bool, inv_id: str, verified: bool) -> str:
   <div class="card">
     <h1>{title}</h1>
     <p>{text}</p>
-    <div class="inv">Счёт № {inv_id or '—'}</div>
+    <div class="inv">Счёт № {inv_id or "—"}</div>
     <a href="/">Вернуться в ClickJurist</a>
   </div>
 </body>

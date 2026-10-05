@@ -11,6 +11,7 @@ ETag/If-Modified-Since продолжают работать на горячих
 продолжает видеть старую вёрстку после правок CSS/JS, даже когда
 мы инкрементируем ``?v=N``.
 """
+
 from __future__ import annotations
 
 from fastapi.staticfiles import StaticFiles

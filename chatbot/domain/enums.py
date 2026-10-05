@@ -1,4 +1,5 @@
 """Перечисления доменного слоя чат-бота."""
+
 from __future__ import annotations
 
 from enum import Enum

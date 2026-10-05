@@ -1,4 +1,5 @@
 """Сущности доменного слоя: сообщения, диалоги, ответы бота."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

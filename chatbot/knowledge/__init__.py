@@ -1,4 +1,5 @@
 """База знаний о сервисе ClickJurist."""
+
 from __future__ import annotations
 
 from chatbot.knowledge.base import StaticKnowledgeBase, normalize

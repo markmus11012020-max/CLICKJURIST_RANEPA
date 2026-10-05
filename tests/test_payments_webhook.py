@@ -11,6 +11,7 @@
     * несуществующий ``shp_session_id`` отклоняется без 5xx;
     * GET-вариант работает по тому же контракту.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -34,10 +35,7 @@ def wizard_session() -> WizardSession:
     session = WizardSession(
         session_id=session_id,
         current_stage="STAGE_3",
-        final_document_markdown=(
-            "# Исковое заявление\n\n"
-            "Заявитель: [ФИО_1]\nАдрес: [АДРЕС_1]\n"
-        ),
+        final_document_markdown=("# Исковое заявление\n\nЗаявитель: [ФИО_1]\nАдрес: [АДРЕС_1]\n"),
         masking_metadata={
             "ФИО_1": "Иванов Иван Иванович",
             "АДРЕС_1": "г. Самара, ул. Ленина, д. 1",
@@ -69,9 +67,7 @@ def _valid_signature(out_sum: str, inv_id: str) -> str:
 # ------------------------------------------------------------------------------
 # Сценарии: подпись
 # ------------------------------------------------------------------------------
-def test_webhook_accepts_valid_signature(
-    client: TestClient, wizard_session: WizardSession
-) -> None:
+def test_webhook_accepts_valid_signature(client: TestClient, wizard_session: WizardSession) -> None:
     """POST с корректной подписью и ``shp_session_id`` помечает сессию оплаченной."""
     out_sum = "150.00"
     inv_id = "1234567890"

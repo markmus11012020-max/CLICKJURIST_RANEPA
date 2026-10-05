@@ -154,8 +154,7 @@ def _build_paid_document(session: WizardSession) -> str | None:
         # без подтверждения оплаты, мы возвращаем только превью, а не
         # полный документ.
         logger.warning(
-            "_build_paid_document вызван для неоплаченной сессии %s — "
-            "возвращаем только превью.",
+            "_build_paid_document вызван для неоплаченной сессии %s — возвращаем только превью.",
             session.session_id,
         )
         return _build_safe_document_for_paywall(session)
@@ -229,8 +228,10 @@ async def get_wizard_state(request: Request) -> Response:
         session = WizardSession(session_id=session_id)
 
     snapshot = _task_snapshot(session.task_id)
-    storage_mode = "hot" if wizard_store.get_hot_store().get(session_id) else (
-        "cold" if session.created_at else "empty"
+    storage_mode = (
+        "hot"
+        if wizard_store.get_hot_store().get(session_id)
+        else ("cold" if session.created_at else "empty")
     )
 
     # Paywall-логика: подменяем ``final_document_markdown`` в зависимости
@@ -264,9 +265,7 @@ async def get_wizard_state(request: Request) -> Response:
 # POST /api/wizard/sync-checklist
 # ------------------------------------------------------------------------------
 @router.post("/sync-checklist", response_model=SyncChecklistResponse)
-async def sync_wizard_checklist(
-    payload: SyncChecklistRequest, request: Request
-) -> Response:
+async def sync_wizard_checklist(payload: SyncChecklistRequest, request: Request) -> Response:
     """Мгновенно сохранить состояние галочек чек-листа (STAGE_2).
 
     Дизайн под polling-стиль клика:

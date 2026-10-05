@@ -8,6 +8,7 @@
 
 Модуль опционален: если он не подключён, приложение работает как раньше.
 """
+
 from __future__ import annotations
 
 import logging

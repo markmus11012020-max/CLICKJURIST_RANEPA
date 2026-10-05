@@ -1,4 +1,5 @@
 """Чек-лист, шаблон документа, PDF и пакетный тариф (Шаги 2–3 ТЗ)."""
+
 from __future__ import annotations
 
 import asyncio
@@ -61,9 +62,7 @@ async def api_checklist(payload: ChecklistRequest, request: Request) -> Response
         store.log_request(session_hash, "checklist", 502, was_free)
         return JSONResponse(
             status_code=502,
-            content=ChecklistResponse(
-                error=f"Ошибка генерации чек-листа: {exc}"
-            ).model_dump(),
+            content=ChecklistResponse(error=f"Ошибка генерации чек-листа: {exc}").model_dump(),
         )
 
     store.log_request(session_hash, "checklist", 200, was_free)
@@ -93,9 +92,7 @@ async def api_document(payload: DocumentRequest, request: Request) -> Response:
         store.log_request(session_hash, "document", 502, was_free)
         return JSONResponse(
             status_code=502,
-            content=DocumentResponse(
-                error=f"Ошибка генерации документа: {exc}"
-            ).model_dump(),
+            content=DocumentResponse(error=f"Ошибка генерации документа: {exc}").model_dump(),
         )
 
     store.log_request(session_hash, "document", 200, was_free)
@@ -125,27 +122,19 @@ def _publish_progress(record: task_store.TaskRecord, event: dict) -> None:
 def _emit_tokens(record: task_store.TaskRecord, text: str) -> None:
     """Эмитить текст порциями — эффект «живой печати» в ленте задачи."""
     for i in range(0, len(text), _TOKEN_CHUNK):
-        record.push_event({"type": "token", "text": text[i:i + _TOKEN_CHUNK]})
+        record.push_event({"type": "token", "text": text[i : i + _TOKEN_CHUNK]})
 
 
-def _run_checklist_task(
-    record: task_store.TaskRecord, query: str, final_answer: str
-) -> dict:
+def _run_checklist_task(record: task_store.TaskRecord, query: str, final_answer: str) -> dict:
     """Фоновая задача генерации чек-листа со стримингом токенов."""
     try:
         from backend.services.pii_masker import mask_query
 
-        _publish_progress(
-            record, {"type": "progress", "stage": "masking", "progress": 10}
-        )
+        _publish_progress(record, {"type": "progress", "stage": "masking", "progress": 10})
         mask = mask_query(query)
-        _publish_progress(
-            record, {"type": "progress", "stage": "masking_done", "progress": 25}
-        )
+        _publish_progress(record, {"type": "progress", "stage": "masking_done", "progress": 25})
 
-        _publish_progress(
-            record, {"type": "progress", "stage": "drafting", "progress": 40}
-        )
+        _publish_progress(record, {"type": "progress", "stage": "drafting", "progress": 40})
         text = llm_chain.draft_checklist(mask.masked_query, final_answer)
         _emit_tokens(record, text)
 
@@ -173,24 +162,16 @@ _CORPORATE_REDIRECT_NOTICE = (
 )
 
 
-def _run_document_task(
-    record: task_store.TaskRecord, query: str, doc_type: str
-) -> dict:
+def _run_document_task(record: task_store.TaskRecord, query: str, doc_type: str) -> dict:
     """Фоновая задача генерации документа со стримингом токенов."""
     try:
         from backend.services.pii_masker import mask_query
 
-        _publish_progress(
-            record, {"type": "progress", "stage": "masking", "progress": 10}
-        )
+        _publish_progress(record, {"type": "progress", "stage": "masking", "progress": 10})
         mask = mask_query(query)
-        _publish_progress(
-            record, {"type": "progress", "stage": "masking_done", "progress": 25}
-        )
+        _publish_progress(record, {"type": "progress", "stage": "masking_done", "progress": 25})
 
-        _publish_progress(
-            record, {"type": "progress", "stage": "drafting", "progress": 40}
-        )
+        _publish_progress(record, {"type": "progress", "stage": "drafting", "progress": 40})
 
         # Жалоба по корпоративному спору недопустима — подменяем на иск.
         if doc_type == "complaint" and any(
@@ -213,9 +194,7 @@ def _run_document_task(
 
 
 @router.post("/checklist/async", response_model=AsyncTaskResponse, status_code=202)
-async def api_checklist_async(
-    payload: ChecklistRequest, request: Request
-) -> Response:
+async def api_checklist_async(payload: ChecklistRequest, request: Request) -> Response:
     """Поставить генерацию чек-листа в фоновую очередь (Шаг 2 ТЗ prompt170926.md)."""
     session_hash, session_id, was_free, denial = session_gate(request, "checklist")
     if denial is not None:
@@ -224,9 +203,7 @@ async def api_checklist_async(
         store.consume_free_request(session_hash)
     store.register_request(session_hash, was_free)
 
-    record = task_store.submit_task(
-        _run_checklist_task, payload.query, payload.final_answer
-    )
+    record = task_store.submit_task(_run_checklist_task, payload.query, payload.final_answer)
     store.log_request(session_hash, "checklist_async", 202, was_free, "background")
 
     body = AsyncTaskResponse(
@@ -241,9 +218,7 @@ async def api_checklist_async(
 
 
 @router.post("/document/async", response_model=AsyncTaskResponse, status_code=202)
-async def api_document_async(
-    payload: DocumentRequest, request: Request
-) -> Response:
+async def api_document_async(payload: DocumentRequest, request: Request) -> Response:
     """Поставить генерацию документа в фоновую очередь (Шаг 3 ТЗ prompt170926.md)."""
     session_hash, session_id, was_free, denial = session_gate(request, "document")
     if denial is not None:
@@ -252,9 +227,7 @@ async def api_document_async(
         store.consume_free_request(session_hash)
     store.register_request(session_hash, was_free)
 
-    record = task_store.submit_task(
-        _run_document_task, payload.query, payload.doc_type
-    )
+    record = task_store.submit_task(_run_document_task, payload.query, payload.doc_type)
     store.log_request(session_hash, "document_async", 202, was_free, "background")
 
     body = AsyncTaskResponse(
@@ -316,8 +289,7 @@ async def api_pdf(payload: ChecklistRequest, request: Request) -> Response:
     except Exception as exc:  # noqa: BLE001
         elapsed_ms = int((time.perf_counter() - started) * 1000)
         logger.error(
-            f"[PDF] Ошибка формирования PDF: {type(exc).__name__}: {exc} "
-            f"(прошло {elapsed_ms} мс)"
+            f"[PDF] Ошибка формирования PDF: {type(exc).__name__}: {exc} (прошло {elapsed_ms} мс)"
         )
         store.log_request(session_hash, "pdf", 502, was_free)
         return JSONResponse(
@@ -371,17 +343,13 @@ async def api_package(payload: PackageRequest, request: Request) -> Response:
             store.log_request(session_hash, service_code, 502, was_free)
             return JSONResponse(status_code=502, content=body.model_dump())
 
-        body.consultation = with_dynamic_disclaimer(
-            llm_chain.attach_disclaimer(result.final)
-        )
+        body.consultation = with_dynamic_disclaimer(llm_chain.attach_disclaimer(result.final))
         body.sources = result.sources  # type: ignore[assignment]
 
         # Чек-лист (всегда).
         try:
             checklist = llm_chain.draft_checklist(mask.masked_query, result.final or "")
-            body.checklist = with_dynamic_disclaimer(
-                llm_chain.attach_disclaimer(checklist)
-            )
+            body.checklist = with_dynamic_disclaimer(llm_chain.attach_disclaimer(checklist))
         except Exception as exc:  # noqa: BLE001
             logger.warning("Пакет: чек-лист не сгенерирован: %s", exc)
             body.warning = (body.warning or "") + f" Чек-лист: {exc}"

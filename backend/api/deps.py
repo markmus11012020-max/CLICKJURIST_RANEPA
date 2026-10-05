@@ -3,6 +3,7 @@
 Вынесено из ``backend/main.py``, чтобы правило оплаты и анти-абьюз были в
 одном месте и не дублировались в каждом роутере.
 """
+
 from __future__ import annotations
 
 from fastapi import Request
@@ -27,10 +28,7 @@ def payment_required(service: str, session_hash: str) -> JSONResponse:
     """Вернуть 402 Payment Required с готовой ссылкой на оплату Robokassa."""
     invoice = robokassa.create_invoice(service, session_hash)
     payload = PaymentRequiredResponse(
-        detail=(
-            "Сервис работает по предоплате. Оформите платёж, "
-            "чтобы получить ответ."
-        ),
+        detail=("Сервис работает по предоплате. Оформите платёж, чтобы получить ответ."),
         service=service,  # type: ignore[arg-type]
         amount=int(invoice["amount"]),
         payment_url=str(invoice["payment_url"]),
@@ -66,10 +64,7 @@ def enforce_ip_rate_limit(request: Request) -> None:
 
         raise HTTPException(
             status_code=429,
-            detail=(
-                f"Слишком много запросов с вашего IP. Попробуйте через "
-                f"{retry} сек."
-            ),
+            detail=(f"Слишком много запросов с вашего IP. Попробуйте через {retry} сек."),
             headers={"Retry-After": str(retry)},
         )
 
@@ -95,17 +90,12 @@ def enforce_session_rate_limit(session_hash: str) -> None:
 
         raise HTTPException(
             status_code=429,
-            detail=(
-                f"Слишком много запросов из этой сессии. Попробуйте через "
-                f"{retry} сек."
-            ),
+            detail=(f"Слишком много запросов из этой сессии. Попробуйте через {retry} сек."),
             headers={"Retry-After": str(retry)},
         )
 
 
-def session_gate(
-    request: Request, service: str
-) -> tuple[str, str, bool, JSONResponse | None]:
+def session_gate(request: Request, service: str) -> tuple[str, str, bool, JSONResponse | None]:
     """Проверить право на запрос: бесплатный доступ или оплаченный период.
 
     Returns:

@@ -4,6 +4,7 @@
 разросся до 60+ КБ текста, и любая правка требовала его
 перечитывания целиком.
 """
+
 from __future__ import annotations
 
 from backend.services.prompts.persona import SYSTEM_PERSONA
@@ -15,7 +16,9 @@ from backend.services.prompts.persona import SYSTEM_PERSONA
 # это задаёт общий голос сервиса (роль, тон, базовые запреты) ДО того,
 # как модель получит стадийные правила ниже. Так все 3 шага (консультация,
 # чек-лист, документ) звучат одинаково, даже если стадийный промпт меняется.
-PROMPT_STAGE2_ANALYSIS = SYSTEM_PERSONA + """
+PROMPT_STAGE2_ANALYSIS = (
+    SYSTEM_PERSONA
+    + """
 
 Роль: Ты — старший юрист-аналитик и фактчекер юридического сервиса ClickJurist, действующий строго по законодательству Российской Федерации.
 
@@ -52,6 +55,7 @@ PROMPT_STAGE2_ANALYSIS = SYSTEM_PERSONA + """
 
 АНОНИМНОЕ РЕЗЮМЕ ПРОБЛЕМЫ:
 {{ANONYMIZED_SUMMARY}}"""
+)
 
 
 # ==============================================================================

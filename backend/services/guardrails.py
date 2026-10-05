@@ -14,6 +14,7 @@
 Если хотя бы одна проверка не прошла — функция возвращает список нарушений,
 а пайплайн инициирует регенерацию (до ``GUARDRAILS_MAX_RETRIES`` попыток).
 """
+
 from __future__ import annotations
 
 import logging
@@ -73,9 +74,7 @@ class GuardrailReport:
     def add(self, kind: str, message: str, snippet: str = "") -> None:
         """Добавить нарушение и пометить отчёт как непройденный."""
         self.passed = False
-        self.violations.append(
-            GuardrailViolation(kind=kind, message=message, snippet=snippet)
-        )
+        self.violations.append(GuardrailViolation(kind=kind, message=message, snippet=snippet))
 
     def summary(self) -> str:
         """Краткое текстовое резюме для логов и SSE-событий."""
@@ -127,9 +126,7 @@ def check_forbidden_patterns(text: str, report: GuardrailReport) -> None:
             )
 
 
-def check_required_headers(
-    text: str, required: Iterable[str], report: GuardrailReport
-) -> None:
+def check_required_headers(text: str, required: Iterable[str], report: GuardrailReport) -> None:
     """Проверить наличие обязательных заголовков."""
     lowered = text.lower()
     for header in required:
@@ -141,9 +138,7 @@ def check_required_headers(
             )
 
 
-def check_placeholders_preserved(
-    text: str, original_masked: str, report: GuardrailReport
-) -> None:
+def check_placeholders_preserved(text: str, original_masked: str, report: GuardrailReport) -> None:
     """Проверить, что плейсхолдеры из исходного запроса сохранены в ответе."""
     placeholders = set(re.findall(r"\[[A-Z_]+_\d+\]", original_masked))
     for placeholder in placeholders:

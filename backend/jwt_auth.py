@@ -14,6 +14,7 @@
         "fp": "<fingerprint_hash>" # хеш отпечатка браузера (для доп. защиты)
     }
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -44,9 +45,7 @@ def fingerprint_hash(fingerprint: str) -> str:
     """
     if not fingerprint:
         return ""
-    return hashlib.sha256(
-        f"{fingerprint}|{settings.SESSION_HASH_SALT}".encode()
-    ).hexdigest()[:32]
+    return hashlib.sha256(f"{fingerprint}|{settings.SESSION_HASH_SALT}".encode()).hexdigest()[:32]
 
 
 def create_session_token(
@@ -141,10 +140,12 @@ def get_session_from_request(request: Request) -> tuple[str, str]:
         session_uuid = str(payload["sub"])
         # Анонимизированный session_id для логов (UUIDv5 от session_uuid).
         from backend.security import anonymized_session_id
+
         return session_uuid, anonymized_session_id(session_uuid)
     # Новая сессия — генерируем UUIDv4.
     new_uuid = str(uuid.uuid4())
     from backend.security import anonymized_session_id
+
     return new_uuid, anonymized_session_id(new_uuid)
 
 

@@ -4,6 +4,7 @@
 сериализует ответ. Бизнес-логики здесь нет — она в
 :mod:`chatbot.services.orchestrator`.
 """
+
 from __future__ import annotations
 
 import logging
@@ -60,9 +61,7 @@ def _to_model(reply) -> BotReplyModel:
     """Преобразовать доменный ответ в DTO."""
     return BotReplyModel(
         text=reply.text,
-        quick_replies=[
-            {"id": qr.id, "label": qr.label} for qr in reply.quick_replies
-        ],
+        quick_replies=[{"id": qr.id, "label": qr.label} for qr in reply.quick_replies],
         actions=[action.to_dict() for action in reply.actions],
         intent=reply.intent,
         source=reply.source.value,
@@ -94,9 +93,7 @@ async def get_greeting(
     return GreetingResponse(
         session_id=session_id,
         text=greeting.text,
-        quick_replies=[
-            {"id": qr.id, "label": qr.label} for qr in greeting.quick_replies
-        ],
+        quick_replies=[{"id": qr.id, "label": qr.label} for qr in greeting.quick_replies],
         is_returning=greeting.is_returning,
         disclaimer=catalog.DISCLAIMER,
         services=[step.title for step in catalog.SERVICE_STEPS],
@@ -121,9 +118,7 @@ async def post_message(
     """Обработать реплику и вернуть ответ бота."""
     key = _session_key(payload.session_id)
     try:
-        reply = orchestrator.handle_message(
-            key, payload.message, intent_hint=intent_hint
-        )
+        reply = orchestrator.handle_message(key, payload.message, intent_hint=intent_hint)
     except EmptyMessageError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except MessageTooLongError as exc:
@@ -174,9 +169,7 @@ async def post_stream(
     async def event_stream() -> AsyncIterator[str]:
         """Поток кадров SSE."""
         try:
-            events = orchestrator.stream_message(
-                key, cleaned, intent_hint=payload.intent_hint
-            )
+            events = orchestrator.stream_message(key, cleaned, intent_hint=payload.intent_hint)
             # Провайдеры блокирующие: каждый next() выполняется в потоке,
             # иначе event loop встанет на всё время генерации.
             async for event in iterate_in_threadpool(events):
@@ -198,6 +191,8 @@ async def post_stream(
             "Connection": "keep-alive",
         },
     )
+
+
 @router.get(
     "/history",
     response_model=HistoryResponse,

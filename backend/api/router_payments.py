@@ -43,9 +43,9 @@
     * Никакого traceback/exception в тексте ответа робокассе — только
       согласованные статусы.
 """
+
 from __future__ import annotations
 
-import logging
 import uuid
 from typing import Any
 

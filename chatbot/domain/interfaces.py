@@ -5,6 +5,7 @@
 YandexGPT, статическая база знаний) можно подменять в контейнере
 :mod:`chatbot.container` без правки прикладной логики.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

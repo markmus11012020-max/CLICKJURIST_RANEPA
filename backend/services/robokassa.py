@@ -29,12 +29,13 @@
         * на стороне получателя они доступны как ``shp_<key>`` в
           query-string (GET) и в form-data (POST).
 """
+
 from __future__ import annotations
 
 import hashlib
 import logging
 import uuid
-from typing import Mapping
+from collections.abc import Mapping
 
 from backend.config import RobokassaSettings, robokassa_settings, settings
 
@@ -184,9 +185,7 @@ def create_invoice(
     amount = price_for(service)
     inv_id = generate_inv_id()
     store.create_payment(inv_id, session_hash, service, amount)
-    payment_url = build_payment_url(
-        inv_id, amount, service, custom_shp=custom_shp
-    )
+    payment_url = build_payment_url(inv_id, amount, service, custom_shp=custom_shp)
 
     logger.info(
         "Счёт выставлен",

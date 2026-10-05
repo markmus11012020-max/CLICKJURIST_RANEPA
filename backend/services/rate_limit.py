@@ -16,6 +16,7 @@
 - Распределённую атаку с разных IP (для этого нужен Redis / shared store).
 - Капчу/turnstile — это уровень выше, для production включается отдельно.
 """
+
 from __future__ import annotations
 
 import logging

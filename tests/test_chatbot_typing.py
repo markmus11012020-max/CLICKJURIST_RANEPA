@@ -8,6 +8,7 @@
 символ в символ. Раньше разделители терялись на границах фрагментов, и слова
 слипались — визуально это выглядело как «сломанный» ответ.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -94,9 +95,7 @@ def test_words_are_not_split_mid_word(orchestrator: ChatOrchestrator):
         "абракадабра",
     ],
 )
-def test_every_answer_survives_fragmentation(
-    orchestrator: ChatOrchestrator, message: str
-):
+def test_every_answer_survives_fragmentation(orchestrator: ChatOrchestrator, message: str):
     """Ни один сценарий не теряет текст при нарезке на фрагменты."""
     deltas, final = _deltas(orchestrator, f"stream-params-{abs(hash(message))}", message)
 

@@ -1,4 +1,5 @@
 """LLM-слой чат-бота: промпты и шлюз к моделям."""
+
 from __future__ import annotations
 
 from chatbot.llm.gateway import ChatLLMGateway, NullLLMGateway

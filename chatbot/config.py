@@ -5,6 +5,7 @@
 умолчанию: чат-бот не должен ломать работу сайта, даже если оператор
 забыл прописать переменные.
 """
+
 from __future__ import annotations
 
 import os
@@ -115,9 +116,7 @@ def chatbot_settings() -> ChatbotSettings:
         ],
         exclude_paths=[
             p.strip()
-            for p in os.getenv(
-                "CHATBOT_EXCLUDE_PATHS", "/api,/docs,/static,/chatbot"
-            ).split(",")
+            for p in os.getenv("CHATBOT_EXCLUDE_PATHS", "/api,/docs,/static,/chatbot").split(",")
             if p.strip()
         ],
         greeting_delay_ms=_int("CHATBOT_GREETING_DELAY_MS", 1200),

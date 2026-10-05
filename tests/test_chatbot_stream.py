@@ -3,6 +3,7 @@
 Проверяются три сценария: ответ из базы знаний (мгновенный), потоковая
 генерация моделью с «живой печатью» и деградация, когда модель молчит.
 """
+
 from __future__ import annotations
 
 import json
@@ -84,7 +85,7 @@ def _parse_sse(payload: str) -> list[dict]:
         frame = frame.strip()
         if not frame.startswith("data:"):
             continue
-        events.append(json.loads(frame[len("data:"):].strip()))
+        events.append(json.loads(frame[len("data:") :].strip()))
     return events
 
 
@@ -188,9 +189,7 @@ def test_handle_message_matches_stream() -> None:
 # ---------------------------------------------------------------------------
 @pytest.fixture()
 def client() -> TestClient:
-    container = ChatbotContainer(
-        settings=ChatbotSettings(llm_enabled=False, auto_open=True)
-    )
+    container = ChatbotContainer(settings=ChatbotSettings(llm_enabled=False, auto_open=True))
     app = FastAPI()
     register(app, container=container, mount_static=False)
     return TestClient(app)
@@ -220,9 +219,7 @@ def test_stream_endpoint_returns_sse(client: TestClient) -> None:
 
 
 def test_stream_endpoint_rejects_blank_message(client: TestClient) -> None:
-    response = client.post(
-        "/api/chatbot/stream", json={"session_id": SESSION, "message": "  "}
-    )
+    response = client.post("/api/chatbot/stream", json={"session_id": SESSION, "message": "  "})
     assert response.status_code == 400
 
 
@@ -244,7 +241,5 @@ def test_stream_endpoint_rejects_bad_session(client: TestClient) -> None:
 
 def test_stream_endpoint_rejects_short_session(client: TestClient) -> None:
     """Слишком короткий id отсекает валидатор схемы."""
-    response = client.post(
-        "/api/chatbot/stream", json={"session_id": "short", "message": "привет"}
-    )
+    response = client.post("/api/chatbot/stream", json={"session_id": "short", "message": "привет"})
     assert response.status_code == 422

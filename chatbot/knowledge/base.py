@@ -1,4 +1,5 @@
 """Реализация базы знаний о сервисе поверх :mod:`chatbot.knowledge.catalog`."""
+
 from __future__ import annotations
 
 import re

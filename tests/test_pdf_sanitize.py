@@ -1,4 +1,5 @@
 """Тесты очистки PDF-документа от брендинга, дисклеймеров и плейсхолдеров."""
+
 from backend.services.pdf_generator import _sanitize_content, build_pdf
 
 
@@ -94,10 +95,7 @@ def test_sanitize_replaces_all_placeholder_types():
 
 def test_sanitize_preserves_legal_text():
     """Юридически значимый текст (статьи, даты) сохраняется без изменений."""
-    text = (
-        "Согласно ст. 395 ГК РФ и ст. 333 НК РФ, "
-        "срок исковой давности — 3 года (ст. 196 ГК РФ)."
-    )
+    text = "Согласно ст. 395 ГК РФ и ст. 333 НК РФ, срок исковой давности — 3 года (ст. 196 ГК РФ)."
     out = _sanitize_content(text)
     assert "ст. 395 ГК РФ" in out
     assert "ст. 196 ГК РФ" in out

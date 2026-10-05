@@ -19,6 +19,7 @@ Failover-оркестратор (раздел 3 ТЗ):
     * при падении обоих провайдеров возвращается структурированная ошибка,
       и обработчик API отдаёт HTTP 502, не списывая бесплатный запрос.
 """
+
 from __future__ import annotations
 
 import logging
@@ -237,10 +238,7 @@ def run_draft(masked_query: str, analysis: str = "") -> tuple[str, str, bool]:
 
 def run_reference(masked_query: str, draft: str) -> tuple[str, str, bool]:
     """LLM-2 — критическая проверка черновика и сборка эталонного ответа."""
-    user_content = (
-        f"ВОПРОС ПОЛЬЗОВАТЕЛЯ:\n{masked_query}\n\n"
-        f"ЧЕРНОВИК ОТ LLM-1:\n{draft}"
-    )
+    user_content = f"ВОПРОС ПОЛЬЗОВАТЕЛЯ:\n{masked_query}\n\nЧЕРНОВИК ОТ LLM-1:\n{draft}"
     return _call_with_failover(
         messages=[
             {"role": "system", "content": prompts.PROMPT_LLM_2},
@@ -289,12 +287,12 @@ def normalize_final(text: str) -> str:
     cleaned = text.strip()
     for marker in ("## Итоговый ответ", "## Итоговый Ответ", "Итоговый ответ:"):
         if cleaned.upper().startswith(marker.upper()):
-            cleaned = cleaned[len(marker):].lstrip(" :\n")
+            cleaned = cleaned[len(marker) :].lstrip(" :\n")
             break
     else:
         index = cleaned.upper().find("## ИТОГОВЫЙ ОТВЕТ")
         if index != -1:
-            cleaned = cleaned[index + len("## Итоговый ответ"):].lstrip(" :\n")
+            cleaned = cleaned[index + len("## Итоговый ответ") :].lstrip(" :\n")
     cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
     return cleaned.strip()
 
@@ -328,10 +326,8 @@ def draft_checklist(masked_query: str, final_answer: str) -> str:
     ``max_tokens`` (см. ``settings.MAX_TOKENS_CHECKLIST``), чтобы модель
     не обрывала структуру из 4 шагов с подробными выгодами.
     """
-    system_prompt = (
-        prompts.PROMPT_CHECKLIST
-        .replace("{{MASKED_QUERY}}", masked_query)
-        .replace("{{FINAL_ANSWER}}", final_answer)
+    system_prompt = prompts.PROMPT_CHECKLIST.replace("{{MASKED_QUERY}}", masked_query).replace(
+        "{{FINAL_ANSWER}}", final_answer
     )
     text, _, _ = _call_with_failover(
         messages=[
@@ -467,8 +463,7 @@ def run_pipeline(raw_query: str, with_stage2: bool = True) -> PipelineResult:
         logger.warning("Асессор недоступен, возвращаем черновик LLM-1")
         result.final = normalize_final(draft)
         result.warning = (
-            "Эталонный ответ асессора недоступен: используется проверенный черновик "
-            "LLM-1."
+            "Эталонный ответ асессора недоступен: используется проверенный черновик LLM-1."
         )
 
     if not result.final.strip():
@@ -522,10 +517,7 @@ def stream_reference(
     Returns:
         ``(полный_текст, имя_провайдера, использован_ли_failover)``.
     """
-    user_content = (
-        f"ВОПРОС ПОЛЬЗОВАТЕЛЯ:\n{masked_query}\n\n"
-        f"ЧЕРНОВИК ОТ LLM-1:\n{analysis}"
-    )
+    user_content = f"ВОПРОС ПОЛЬЗОВАТЕЛЯ:\n{masked_query}\n\nЧЕРНОВИК ОТ LLM-1:\n{analysis}"
     messages = [
         {"role": "system", "content": prompts.PROMPT_LLM_2},
         {"role": "user", "content": user_content},
@@ -647,9 +639,7 @@ def run_pipeline_streaming(
         emit({"type": "token", "text": piece})
 
     try:
-        reference, provider_2, _ = stream_reference(
-            mask.masked_query, draft, on_token=_on_token
-        )
+        reference, provider_2, _ = stream_reference(mask.masked_query, draft, on_token=_on_token)
         result.reference = reference
         result.final = normalize_final(reference)
         result.stage2_provider = provider_2
@@ -674,12 +664,14 @@ def run_pipeline_streaming(
             "данные требуют дополнительной проверки по официальной редакции."
         )
 
-    emit({
-        "type": "meta",
-        "stage1_provider": result.stage1_provider,
-        "stage2_provider": result.stage2_provider,
-        "warning": result.warning or "",
-    })
+    emit(
+        {
+            "type": "meta",
+            "stage1_provider": result.stage1_provider,
+            "stage2_provider": result.stage2_provider,
+            "warning": result.warning or "",
+        }
+    )
     emit({"type": "progress", "stage": "done", "progress": 100})
 
     logger.info(

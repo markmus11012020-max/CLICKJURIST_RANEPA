@@ -15,6 +15,7 @@
 ```python
 # backend/main.py
 from chatbot.app import register
+
 register(app)
 ```
 

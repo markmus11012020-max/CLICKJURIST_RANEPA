@@ -4,6 +4,7 @@
 показывает его мгновенно при открытии страницы, а ответ на первый вопрос
 уходит уже в фоне.
 """
+
 from __future__ import annotations
 
 import time
@@ -74,9 +75,7 @@ class GreetingService:
         rows: tuple[tuple[str, str, str], ...],
     ) -> tuple[QuickReply, ...]:
         """Преобразовать кортежи каталога в доменные объекты."""
-        return tuple(
-            QuickReply(id=row[0], label=row[1], intent_hint=row[2]) for row in rows
-        )
+        return tuple(QuickReply(id=row[0], label=row[1], intent_hint=row[2]) for row in rows)
 
 
 class GreetingDismissPolicy:

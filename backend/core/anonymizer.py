@@ -56,11 +56,12 @@
     :func:`deanonymize_document` нормализует оба варианта к плоскому
     ``{placeholder_token: real_value}``.
 """
+
 from __future__ import annotations
 
 import logging
 import re
-from typing import Iterable
+from collections.abc import Iterable
 
 logger = logging.getLogger("clickjurist.core.anonymizer")
 
@@ -73,9 +74,7 @@ logger = logging.getLogger("clickjurist.core.anonymizer")
 # Один и тот же regex покрывает оба семейства — кириллицу и латиницу,
 # чтобы быть устойчивым к LLM, иногда «транслитерирующим» теги.
 # Захватываем как содержимое в скобках: ``ФИО_1``.
-_PLACEHOLDER_RE = re.compile(
-    r"\[(?P<token>[A-ZА-ЯЁ][A-ZА-ЯЁ0-9_]*_\d+)\]"
-)
+_PLACEHOLDER_RE = re.compile(r"\[(?P<token>[A-ZА-ЯЁ][A-ZА-ЯЁ0-9_]*_\d+)\]")
 
 # Санити-обрезка для логов: ограничиваем длину значения, чтобы случайно
 # не записать в лог гигантскую ПДн.
@@ -85,7 +84,7 @@ _LOG_PREVIEW_CHARS = 64
 # ------------------------------------------------------------------------------
 # Нормализация карты подстановок
 # ------------------------------------------------------------------------------
-def _flatten_metadata(metadata: dict | None) -> dict[str, str]:
+def _flatten_metadata(metadata: dict[str, object] | None) -> dict[str, str]:
     """Привести ``masking_metadata`` к плоскому виду ``{placeholder: value}``.
 
     Поддерживаются три варианта входа (все три встречаются в проде):
@@ -132,7 +131,11 @@ def _flatten_metadata(metadata: dict | None) -> dict[str, str]:
                 str_value = str(item).strip()
                 if not str_value:
                     continue
-                target_key = base_key if "_" in base_key and re.search(r"_\d+$", base_key) else f"{base_key}_{idx}"
+                target_key = (
+                    base_key
+                    if "_" in base_key and re.search(r"_\d+$", base_key)
+                    else f"{base_key}_{idx}"
+                )
                 result.setdefault(target_key, str_value)
             continue
 
@@ -150,7 +153,7 @@ def _flatten_metadata(metadata: dict | None) -> dict[str, str]:
 # ------------------------------------------------------------------------------
 def deanonymize_document(
     markdown_text: str,
-    metadata: dict | None,
+    metadata: dict[str, object] | None,
 ) -> str:
     """Подставить реальные ПДн вместо плейсхолдеров ``[ФИО_1]`` и т.п.
 

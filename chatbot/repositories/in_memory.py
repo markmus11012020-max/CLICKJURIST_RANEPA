@@ -5,6 +5,7 @@
 :class:`chatbot.domain.interfaces.ConversationRepository` появится
 реализация на Redis — сервисы менять не придётся.
 """
+
 from __future__ import annotations
 
 import threading
@@ -67,11 +68,7 @@ class InMemoryConversationRepository(ConversationRepository):
         """Удалить диалоги старше ``ttl``. Вернуть количество удалённых."""
         with self._lock:
             now = self._clock.now()
-            stale = [
-                sid
-                for sid, conv in self._items.items()
-                if now - conv.updated_at > ttl
-            ]
+            stale = [sid for sid, conv in self._items.items() if now - conv.updated_at > ttl]
             for sid in stale:
                 del self._items[sid]
             return len(stale)

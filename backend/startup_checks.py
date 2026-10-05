@@ -5,6 +5,7 @@
 проблем и либо поднимают исключение (критично), либо пишут в лог
 (предупреждение).
 """
+
 from __future__ import annotations
 
 import logging
@@ -59,8 +60,7 @@ def collect_production_issues() -> list[str]:
 
     if settings.cors_origins == ["*"] or settings.CORS_ALLOW_ORIGINS.strip() == "*":
         issues.append(
-            "CORS_ALLOW_ORIGINS=*: любой сайт может обращаться к API. "
-            "Перечислите домены явно."
+            "CORS_ALLOW_ORIGINS=*: любой сайт может обращаться к API. Перечислите домены явно."
         )
 
     if settings.FREE_TIER_IP_REQUESTS < settings.FREE_TIER_REQUESTS:
@@ -88,9 +88,7 @@ def validate_startup() -> list[str]:
     critical = [
         issue
         for issue in issues
-        if "DEV_BYPASS_PAYWALL" in issue
-        or "SESSION_HASH_SALT" in issue
-        or "JWT_SECRET" in issue
+        if "DEV_BYPASS_PAYWALL" in issue or "SESSION_HASH_SALT" in issue or "JWT_SECRET" in issue
     ]
     warnings = [issue for issue in issues if issue not in critical]
 
@@ -99,7 +97,5 @@ def validate_startup() -> list[str]:
 
     if critical:
         joined = "\n  - ".join(critical)
-        raise RuntimeError(
-            "Критическая ошибка конфигурации в production:\n  - " + joined
-        )
+        raise RuntimeError("Критическая ошибка конфигурации в production:\n  - " + joined)
     return issues

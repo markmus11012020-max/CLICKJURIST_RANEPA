@@ -1,4 +1,5 @@
 """Тесты асинхронной генерации, JWT-авторизации и guardrails (разделы 2.1, 3.1, 5.2 ТЗ)."""
+
 from __future__ import annotations
 
 import time
@@ -88,6 +89,7 @@ def test_task_store_push_event():
 
 def test_submit_task_runs_in_background():
     """submit_task запускает функцию в фоне и обновляет статус."""
+
     def my_task(record, value):
         store = task_store.get_task_store()
         store.update(record.task_id, progress=50)
@@ -108,6 +110,7 @@ def test_submit_task_runs_in_background():
 
 def test_submit_task_captures_exception():
     """submit_task ловит исключения и помечает задачу как failed."""
+
     def failing_task(record):
         raise RuntimeError("test error")
 
@@ -248,9 +251,7 @@ def test_generate_search_queries():
     """Генерация поисковых запросов из резюме."""
     from backend.services import web_factcheck
 
-    queries = web_factcheck.generate_search_queries(
-        "Спор о задержке зарплаты работодателем"
-    )
+    queries = web_factcheck.generate_search_queries("Спор о задержке зарплаты работодателем")
     assert len(queries) >= 2
     assert all("закон РФ" in q or "практика" in q or "ГК РФ" in q for q in queries)
 

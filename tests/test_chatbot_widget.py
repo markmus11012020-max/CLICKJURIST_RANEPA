@@ -9,6 +9,7 @@ Python. Ошибка ``this._state.set(...)`` вместо ``this.state.set(...)
 Поэтому здесь статический разбор исходников виджета: ищем обращения
 к полям, которых в классе нет.
 """
+
 from __future__ import annotations
 
 import re

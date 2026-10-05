@@ -21,6 +21,7 @@
     # или
     uvicorn backend.main:app --reload
 """
+
 from __future__ import annotations
 
 import time

@@ -1,4 +1,5 @@
 """Прикладной слой чат-бота: сценарии общения с посетителем."""
+
 from __future__ import annotations
 
 from chatbot.services.greeting import Greeting, GreetingDismissPolicy, GreetingService

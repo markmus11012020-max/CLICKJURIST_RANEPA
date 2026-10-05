@@ -4,6 +4,7 @@
 пайплайна (``data: {json}\\n\\n``), чтобы клиентский парсер был один на
 оба потока.
 """
+
 from __future__ import annotations
 
 import json

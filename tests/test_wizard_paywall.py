@@ -12,6 +12,7 @@
       холодную таблицу ``wizard_cases``;
     * сессии без документа (STAGE_1/STAGE_2) paywall-логика не затрагивает.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -44,10 +45,8 @@ def _auth_cookie(session_uuid: str) -> dict[str, str]:
 def test_wizard_state_returns_paywall_preview_for_unpaid_session(client: TestClient):
     """STAGE_3 без оплаты: документ обрезается и помечается маркером paywall."""
     session_uuid = str(uuid.uuid4())
-    full_md = (
-        "# Заголовок документа\n\n"
-        "Это первая часть — шапка с описанием.\n\n"
-        + ("Длинная подписная часть с деталями. " * 200)
+    full_md = "# Заголовок документа\n\nЭто первая часть — шапка с описанием.\n\n" + (
+        "Длинная подписная часть с деталями. " * 200
     )
     wizard_store.save_session(
         WizardSession(
@@ -85,10 +84,7 @@ def test_wizard_state_returns_paywall_preview_for_unpaid_session(client: TestCli
 def test_wizard_state_returns_deanonymized_text_for_paid_session(client: TestClient):
     """STAGE_3 с оплатой: документ deanonymized, плейсхолдеры заменены."""
     session_uuid = str(uuid.uuid4())
-    full_md = (
-        "# Заголовок\n\n"
-        "Заявитель: [ФИО_1]\nАдрес: [АДРЕС_1]\n"
-    )
+    full_md = "# Заголовок\n\nЗаявитель: [ФИО_1]\nАдрес: [АДРЕС_1]\n"
     wizard_store.save_session(
         WizardSession(
             session_id=uuid.UUID(session_uuid),

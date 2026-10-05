@@ -1,4 +1,5 @@
 """Pydantic-модели запросов и ответов ClickJurist Production API."""
+
 from __future__ import annotations
 
 import uuid

@@ -20,6 +20,7 @@
     * фильтрация по приоритетным доменам (consultant.ru, garant.ru, pravo.gov.ru);
     * суммаризация юридических норм через LLM.
 """
+
 from __future__ import annotations
 
 import logging
@@ -333,9 +334,7 @@ def clean_html(html: str, max_chars: int | None = None) -> str:
     return text
 
 
-def fetch_page_text(
-    url: str, timeout: int | None = None, max_chars: int | None = None
-) -> str:
+def fetch_page_text(url: str, timeout: int | None = None, max_chars: int | None = None) -> str:
     """Загрузить страницу и вернуть очищенный текст."""
     if not url:
         return ""
@@ -345,8 +344,7 @@ def fetch_page_text(
             timeout=timeout or settings.WEB_FETCH_TIMEOUT_S,
             headers={
                 "User-Agent": (
-                    "Mozilla/5.0 (compatible; ClickJuristBot/1.0; "
-                    "+https://clickjurist.ru)"
+                    "Mozilla/5.0 (compatible; ClickJuristBot/1.0; +https://clickjurist.ru)"
                 )
             },
         )
@@ -378,9 +376,7 @@ def prioritize_sources(sources: list[Source]) -> list[Source]:
     return priority + other
 
 
-def generate_search_queries(
-    anonymized_summary: str, max_queries: int = 3
-) -> list[str]:
+def generate_search_queries(anonymized_summary: str, max_queries: int = 3) -> list[str]:
     """Сгенерировать поисковые запросы на основе обезличенного резюме."""
     if not anonymized_summary or not anonymized_summary.strip():
         return []
@@ -393,9 +389,7 @@ def generate_search_queries(
     return queries[:max_queries]
 
 
-def agent_search(
-    anonymized_summary: str, max_sources: int = 3
-) -> list[Source]:
+def agent_search(anonymized_summary: str, max_sources: int = 3) -> list[Source]:
     """Агентский сценарий веб-фактчекинга (раздел 2.2 ТЗ)."""
     if not settings.ENABLE_WEB_SEARCH or settings.WEB_SEARCH_PROVIDER == "none":
         return []
@@ -423,11 +417,13 @@ def fetch_and_summarize(
             source.url,
             max_chars=max_chars_per_source or settings.WEB_FETCH_MAX_CHARS,
         )
-        result.append({
-            "title": source.title,
-            "url": source.url,
-            "text": text,
-            "domain": source.domain,
-            "is_priority": is_priority_domain(source.url),
-        })
+        result.append(
+            {
+                "title": source.title,
+                "url": source.url,
+                "text": text,
+                "domain": source.domain,
+                "is_priority": is_priority_domain(source.url),
+            }
+        )
     return result

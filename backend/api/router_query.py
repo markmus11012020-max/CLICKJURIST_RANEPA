@@ -1,4 +1,5 @@
 """Консультация и фоновые задачи генерации (разделы 1 и 2.1 ТЗ)."""
+
 from __future__ import annotations
 
 import json
@@ -41,9 +42,7 @@ async def api_query(payload: QueryRequest, request: Request) -> Response:
     result = llm_chain.run_pipeline(payload.query, with_stage2=True)
 
     if result.error:
-        store.log_request(
-            session_hash, "consultation", 502, was_free, result.stage2_provider
-        )
+        store.log_request(session_hash, "consultation", 502, was_free, result.stage2_provider)
         body = GenerateResponse(
             response=None,
             anonymized=result.anonymized,
@@ -65,9 +64,7 @@ async def api_query(payload: QueryRequest, request: Request) -> Response:
         warning=result.warning,
         legal_category=classify_legal_category(payload.query),
     )
-    store.log_request(
-        session_hash, "consultation", 200, was_free, result.stage2_provider
-    )
+    store.log_request(session_hash, "consultation", 200, was_free, result.stage2_provider)
     response = JSONResponse(content=body.model_dump())
     response.headers["X-Session-Id"] = session_id
     return response
@@ -108,11 +105,13 @@ def _run_pipeline_task(record: task_store.TaskRecord, query: str) -> dict:
         result.final or "",
         masked_query=result.mask.masked_query if result.mask else "",
     )
-    record.push_event({
-        "type": "guardrails",
-        "passed": guard_report.passed,
-        "summary": guard_report.summary(),
-    })
+    record.push_event(
+        {
+            "type": "guardrails",
+            "passed": guard_report.passed,
+            "summary": guard_report.summary(),
+        }
+    )
 
     if result.error:
         return {
@@ -152,9 +151,7 @@ async def api_query_async(payload: QueryRequest, request: Request) -> Response:
     store.register_request(session_hash, was_free)
 
     record = task_store.submit_task(_run_pipeline_task, payload.query)
-    store.log_request(
-        session_hash, "consultation_async", 202, was_free, "background"
-    )
+    store.log_request(session_hash, "consultation_async", 202, was_free, "background")
 
     body = AsyncTaskResponse(
         task_id=record.task_id,

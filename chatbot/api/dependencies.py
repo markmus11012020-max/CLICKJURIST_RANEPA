@@ -3,6 +3,7 @@
 Отдельный файл, чтобы роуты оставались тонкими: получение зависимости —
 одна строка, вся сборка — в :mod:`chatbot.container`.
 """
+
 from __future__ import annotations
 
 from fastapi import Depends, HTTPException, Request, status

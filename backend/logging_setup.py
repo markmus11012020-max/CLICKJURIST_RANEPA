@@ -12,6 +12,7 @@
     3. :class:`YandexCloudLoggingHandler` — асинхронная (фоновая) отправка
        записей в API Yandex Cloud Logging батчами.
 """
+
 from __future__ import annotations
 
 import atexit
@@ -78,9 +79,7 @@ class PIIRedactingFilter(logging.Filter):
                 record.msg = redact_text(record.msg)
             if record.args:
                 if isinstance(record.args, dict):
-                    record.args = {
-                        key: _redact_arg(value) for key, value in record.args.items()
-                    }
+                    record.args = {key: _redact_arg(value) for key, value in record.args.items()}
                 else:
                     record.args = tuple(_redact_arg(arg) for arg in record.args)
         except Exception:  # pragma: no cover — журнал не должен ломать приложение
@@ -98,9 +97,7 @@ class JsonFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         payload: dict[str, object] = {
-            "timestamp": time.strftime(
-                "%Y-%m-%dT%H:%M:%S", time.gmtime(record.created)
-            ),
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(record.created)),
             "level": record.levelname,
             "service": self.service,
             "logger": record.name,
@@ -146,9 +143,7 @@ class YandexCloudLoggingHandler(logging.Handler):
         self.url = url
         self._queue: queue.Queue[dict[str, object]] = queue.Queue(maxsize=1000)
         self._stop = threading.Event()
-        self._thread = threading.Thread(
-            target=self._worker, name="yc-log-shipper", daemon=True
-        )
+        self._thread = threading.Thread(target=self._worker, name="yc-log-shipper", daemon=True)
         self._thread.start()
         atexit.register(self.close)
 
@@ -175,8 +170,7 @@ class YandexCloudLoggingHandler(logging.Handler):
             except queue.Empty:
                 pass
             if buffer and (
-                len(buffer) >= self.MAX_BATCH
-                or (time.time() - last_flush) >= self.FLUSH_INTERVAL_S
+                len(buffer) >= self.MAX_BATCH or (time.time() - last_flush) >= self.FLUSH_INTERVAL_S
             ):
                 self._ship(buffer)
                 buffer = []

@@ -1,4 +1,5 @@
 """JWT-авторизация сессии (раздел 3.1 ТЗ prompt160926.md)."""
+
 from __future__ import annotations
 
 from typing import Any

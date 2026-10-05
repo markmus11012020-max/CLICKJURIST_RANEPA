@@ -1,4 +1,5 @@
 """Доменный слой чат-бота: сущности, перечисления и контракты."""
+
 from __future__ import annotations
 
 from chatbot.domain.entities import (

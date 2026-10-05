@@ -9,6 +9,7 @@
 возвращает ``None``, и оркестратор отдаёт заготовку из базы знаний.
 Пользователь никогда не видит техническую ошибку.
 """
+
 from __future__ import annotations
 
 import logging
@@ -72,9 +73,7 @@ class ChatLLMGateway(LLMGateway):
                     max_tokens=self._max_tokens,
                 )
             except Exception as exc:
-                logger.warning(
-                    "LLM-провайдер %s недоступен для чат-бота: %s", name, exc
-                )
+                logger.warning("LLM-провайдер %s недоступен для чат-бота: %s", name, exc)
                 continue
             if not text or not text.strip():
                 continue

@@ -3,6 +3,7 @@
 Покрывают стартовый сценарий (приветствие) и деградацию при
 недоступной языковой модели — обе ситуации должны работать без сети.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -205,9 +206,7 @@ def test_sanitizer_limits_length() -> None:
 # ---------------------------------------------------------------------------
 def test_every_intent_has_article(knowledge: StaticKnowledgeBase) -> None:
     """Каждая кнопка быстрого ответа ведёт в существующую статью."""
-    for _, _, hint in (
-        catalog.GREETING_QUICK_REPLIES + catalog.RETURNING_QUICK_REPLIES
-    ):
+    for _, _, hint in catalog.GREETING_QUICK_REPLIES + catalog.RETURNING_QUICK_REPLIES:
         assert knowledge.has_article(Intent(hint)), hint
 
 

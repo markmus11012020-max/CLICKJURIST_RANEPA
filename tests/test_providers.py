@@ -8,6 +8,7 @@
    ``PRIMARY_PROVIDER=yandex`` и Yandex падает.
 3. ``AITunnelProvider`` использует модель по умолчанию, когда ``model=None``.
 """
+
 from __future__ import annotations
 
 from backend.config import settings
@@ -61,9 +62,7 @@ def test_sanitize_headers_removes_cyrillic_from_all_values():
     }
     clean = _sanitize_headers(dirty, "yandex")
     for key, value in clean.items():
-        assert all(ord(c) < 128 for c in value), (
-            f"Non-ASCII в заголовке {key}: {value!r}"
-        )
+        assert all(ord(c) < 128 for c in value), f"Non-ASCII в заголовке {key}: {value!r}"
 
 
 def test_sanitize_headers_does_not_mutate_original():
